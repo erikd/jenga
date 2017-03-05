@@ -25,10 +25,12 @@ library
                       , bytestring              == 0.10.*
                       , http-conduit
                       , http-types              == 0.9.*
+                      , text                    == 1.2.*
 
 
   exposed-modules:
-                        Jenga.HTTP
+                        Jenga.PackageList
+                      , Jenga.HTTP
 
   -- other-modules:
   -- other-extensions:
