@@ -33,6 +33,7 @@ library
   exposed-modules:      Jenga.Cabal
                       , Jenga.PackageList
                       , Jenga.HTTP
+                      , Jenga.Render
                       , Jenga.Stack
 
   other-extensions:     OverloadedStrings

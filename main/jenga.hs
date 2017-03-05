@@ -5,11 +5,12 @@ import           Control.Monad (unless)
 import           Data.Either (partitionEithers)
 import qualified Data.List as DL
 import           Data.Text (Text)
-import qualified Data.Text.IO as T
+import qualified Data.Text.Lazy.IO as T
 
 import           Jenga.Cabal
 import           Jenga.HTTP
 import           Jenga.PackageList
+import           Jenga.Render
 import           Jenga.Stack
 
 import           System.IO (hPutStrLn, stderr)
@@ -49,19 +50,10 @@ processPackageList deps plist = do
   let (missing, found) = partitionEithers $ lookupPackages plist deps
   unless (DL.null missing) $
     reportMissing missing
-  printCabalFreeze found
+  T.putStrLn . unLazyText $ renderAsCabalConfig found
 
 
 reportMissing :: [Text] -> IO ()
 reportMissing [] = putStrLn "No missing packages found."
 reportMissing xs =
   hPutStrLn stderr $ "The packages " ++ show xs ++ " could not be found in the specified stack resolver data."
-
-printCabalFreeze :: [(Text, PackageInfo)] -> IO ()
-printCabalFreeze xs = do
-  putStr "constraints:"
-  T.putStrLn . mconcat . DL.intersperse ",\n" $ DL.map render xs
-  where
-    render (name, pkg) =
-      mconcat [ " ", name, " == ", packageVersion pkg ]
-
