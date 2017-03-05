@@ -6,7 +6,7 @@ module Jenga.PackageList
   , lookupPackages
   ) where
 
-import           Data.Aeson
+import           Data.Aeson (FromJSON (..), Value (..), (.:))
 import           Data.Aeson.Types (typeMismatch)
 
 import           Data.Map.Strict (Map)
