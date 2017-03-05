@@ -29,8 +29,8 @@ library
                       , text                    == 1.2.*
 
 
-  exposed-modules:
-                        Jenga.PackageList
+  exposed-modules:      Jenga.Cabal
+                      , Jenga.PackageList
                       , Jenga.HTTP
 
   -- other-modules:
