@@ -21,7 +21,7 @@ basic dependencies:
 ```
 git clone https://github.com/haskellnews/haskellnews/
 cd haskellnews
-jenga haskellnews.cabal > cabal.config
+jenga -i haskellnews.cabal > cabal.config
 # Manually remove the dependency on `base`
 cabal sandbox init
 cabal install --dependencies-only
