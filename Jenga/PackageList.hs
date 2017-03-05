@@ -3,6 +3,7 @@
 module Jenga.PackageList
   ( PackageInfo (..)
   , PackageList (..)
+  , lookupPackages
   ) where
 
 import           Data.Aeson
@@ -18,7 +19,7 @@ data PackageList = PackageList
   { ghcVersion :: Text
   , creatDate :: Text
   , resolverName :: Text
-  , packageList :: Map Text PackageInfo
+  , packageMap :: Map Text PackageInfo
   }
   deriving Show
 
@@ -64,13 +65,24 @@ instance FromJSON PackageList where
   parseJSON (Object v) = do
     s <- v .: "snapshot"
     pkgs <- v .: "packages"
-    pure $ PackageList (ghc s) (created s) (name s) $ packageMap pkgs
+    pure $ PackageList (ghc s) (created s) (name s) $ mkPackageMap pkgs
 
   parseJSON invalid = typeMismatch "PackageList" invalid
 
-packageMap :: [Package] -> Map Text PackageInfo
-packageMap =
+mkPackageMap :: [Package] -> Map Text PackageInfo
+mkPackageMap =
   DM.fromList . fmap convert
   where
     convert (Package nam ver syn core) =
       (nam, PackageInfo ver syn core)
+
+
+lookupPackages :: PackageList -> [Text] -> [Either Text (Text, PackageInfo)]
+lookupPackages plist deps =
+  fmap plookup deps
+  where
+    pmap = packageMap plist
+    plookup k =
+      case DM.lookup k pmap of
+        Nothing -> Left k
+        Just x -> Right (k, x)

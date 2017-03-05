@@ -1,4 +1,6 @@
-module Jenga.Stack where
+module Jenga.Stack
+  ( readResolver
+  ) where
 
 -- Read the resolver from the stack.yaml file in the current directory.
 -- This is unashamedly savage.
