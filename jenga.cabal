@@ -47,4 +47,5 @@ executable jenga
 
   build-depends:       	base
                       , jenga
+                      , optparse-applicative    == 0.13.*
                       , text
