@@ -17,10 +17,18 @@ extra-source-files:  	ChangeLog.md
 cabal-version:       	>= 1.10
 
 library
-  ghc-options:         	-Wall -fwarntabs
+  ghc-options:         	-Wall -fwarn-tabs
   default-language:    	Haskell2010
   build-depends:       	base					>= 4.9			&& < 4.10
+                      , aeson
+                      , aeson-pretty
+                      , bytestring              == 0.10.*
+                      , http-conduit
+                      , http-types              == 0.9.*
 
-  -- exposed-modules:
+
+  exposed-modules:
+                        Jenga.HTTP
+
   -- other-modules:
   -- other-extensions:
