@@ -14,14 +14,21 @@ import           Jenga.PackageList
 import           Jenga.Render
 import           Jenga.Stack
 
-import           Options.Applicative (Parser, execParser, flag, help, info, long, short, strOption)
+import           Options.Applicative
+                        ( Parser, ParserInfo, execParser, flag, fullDesc
+                        , header, help, helper, info, long, metavar, short, strOption)
 
 import           System.IO (hPutStrLn, stderr)
 
 
 main :: IO ()
 main =
-  execParser (info pCommand mempty) >>= process
+  execParser opts >>= process
+  where
+    opts :: ParserInfo Command
+    opts = info (helper <*> pCommand)
+      ( fullDesc <> header "jenaga - Generate a cabal freeze file from a stack.yaml"
+      )
 
 -- -----------------------------------------------------------------------------
 
@@ -38,6 +45,7 @@ cabalFileP :: Parser FilePath
 cabalFileP = strOption
   (  short 'i'
   <> long "input"
+  <> metavar "INPUT_CABAL_FILE"
   <> help "The input cabal file."
   )
 
