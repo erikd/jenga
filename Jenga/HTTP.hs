@@ -1,20 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Jenga.HTTP where
 
-import Control.Monad (when, void)
+import           Control.Monad (when, void)
 
-import Data.Aeson (eitherDecode')
+import           Data.Aeson (eitherDecode')
+import qualified Data.Text as T
 
-import Network.HTTP.Client.Conduit
-import Network.HTTP.Types.Header (hAccept)
-import Network.HTTP.Types.Status (status200)
+import           Jenga.PackageList
+import           Jenga.Stack
 
-import Jenga.PackageList
-
-
-newtype StackResolver
-  = StackResolver String
-  deriving (Eq, Show)
+import           Network.HTTP.Client.Conduit
+import           Network.HTTP.Types.Header (hAccept)
+import           Network.HTTP.Types.Status (status200)
 
 
 
@@ -22,10 +19,10 @@ stackageUrl :: String
 stackageUrl = "https://www.stackage.org/"
 
 -- Should use an ErrorT here.
-getStackageResolverPkgList :: StackResolver -> IO (Either String PackageList)
-getStackageResolverPkgList (StackResolver sr) = do
+getStackageResolverPkgList :: StackConfig -> IO (Either String PackageList)
+getStackageResolverPkgList scfg = do
   -- TODO: swap out for something that doesn't `fail`.
-  request <- parseRequest $ stackageUrl ++ sr
+  request <- parseRequest $ stackageUrl ++ T.unpack (stackResolver scfg)
   withManager $ do
     response <- httpLbs $ request { requestHeaders = (hAccept, "application/json") : requestHeaders request }
 

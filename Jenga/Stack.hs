@@ -1,28 +1,35 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Jenga.Stack
-  ( readResolver
+  ( StackConfig (..)
+  , readStackConfig
   ) where
 
--- Read the resolver from the stack.yaml file in the current directory.
--- This is unashamedly savage.
+import           Data.Aeson (FromJSON (..), Value (..), (.:))
+import           Data.Aeson.Types (typeMismatch)
 
-import           Data.Char (isSpace)
-import qualified Data.List as DL
-
-import           Jenga.HTTP
-
-
-readResolver :: IO (Maybe StackResolver)
-readResolver = -- Is this the *only* file name?
-  extract <$> readFile "stack.yaml"
+import           Data.Text (Text)
+import           Data.Yaml (ParseException)
+import qualified Data.Yaml as Y
 
 
-extract :: String -> Maybe StackResolver
-extract xs =
-  case filter (DL.isPrefixOf "resolver:") (lines xs) of
-    [x] -> Just .StackResolver $ cleanup x
-    _ -> Nothing
-  where
-    cleanup = DL.takeWhile (not . isSpace)
-            . DL.dropWhile (isSpace)
-            . DL.drop 1
-            . DL.dropWhile (/= ':')
+data StackConfig = StackConfig
+  { stackResolver :: Text
+  , stackExtraDeps :: [Text]
+  }
+  deriving (Eq, Show)
+
+instance FromJSON StackConfig where
+  parseJSON (Object v) = StackConfig
+        <$> v .: "resolver"
+        <*> v .: "extra-deps"
+
+  parseJSON invalid = typeMismatch "StackConfig" invalid
+
+
+readStackConfig :: IO (Either ParseException StackConfig)
+readStackConfig = Y.decodeFileEither stackYamlFile
+
+
+stackYamlFile :: FilePath
+stackYamlFile = "stack.yaml"

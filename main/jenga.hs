@@ -62,14 +62,14 @@ outputFormatP =
 process :: Command -> IO ()
 process (Command cabalpath fmt) = do
   deps <- fmap dependencyName <$> readPackageDependencies cabalpath
-  mr <- readResolver
+  mr <- readStackConfig
   case mr of
-    Nothing -> putStrLn "Not able to find resolver version in 'stack.yaml' file."
-    Just r -> processResolver fmt deps r
+    Left err -> putStrLn $ show err
+    Right cfg -> processResolver fmt deps cfg
 
-processResolver :: OutputFormat -> [Text] -> StackResolver -> IO ()
-processResolver fmt deps sr = do
-  mpl <- getStackageResolverPkgList sr
+processResolver :: OutputFormat -> [Text] -> StackConfig -> IO ()
+processResolver fmt deps scfg = do
+  mpl <- getStackageResolverPkgList scfg
   case mpl of
     Left s -> putStrLn $ "Error parse JSON: " ++ s
     Right pl -> processPackageList fmt deps pl
