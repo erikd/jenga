@@ -14,8 +14,8 @@ or [mafia](https://github.com/ambiata/mafia/).
 # Using it
 
 For example, I wanted to build
-[haskellnews](https://github.com/haskellnews/haskellnews/) but its cabal had
-close to zero dependency bounds. With `jenga` at least I could install the
+[haskellnews](https://github.com/haskellnews/haskellnews/) but its cabal file
+had close to zero dependency bounds. With `jenga` at least I could install the
 basic dependencies:
 
 ```
