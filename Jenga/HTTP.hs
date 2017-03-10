@@ -29,4 +29,4 @@ getStackageResolverPkgList scfg = do
     when (responseStatus response /= status200) $
       void . error $ "getStackageResolverPkgList: status " ++ show (responseStatus response)
 
-    pure $ eitherDecode' (responseBody response)
+    pure $ mergeExtraDeps scfg <$> eitherDecode' (responseBody response)

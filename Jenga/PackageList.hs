@@ -4,16 +4,19 @@ module Jenga.PackageList
   ( PackageInfo (..)
   , PackageList (..)
   , lookupPackages
+  , mergeExtraDeps
   ) where
 
 import           Data.Aeson (FromJSON (..), Value (..), (.:))
 import           Data.Aeson.Types (typeMismatch)
 
+import qualified Data.List as DL
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as DM
 
 import           Data.Text (Text)
 
+import           Jenga.Stack
 
 data PackageList = PackageList
   { ghcVersion :: Text
@@ -39,9 +42,9 @@ data PackageInfo = PackageInfo
 
 -- Temporary data type. Not exported.
 data Snapshot = Snapshot
-  { ghc :: Text
-  , created :: Text
-  , name :: Text
+  { snapshotGhc :: Text
+  , snapshotCreated :: Text
+  , snapshotName :: Text
   }
 
 
@@ -65,7 +68,7 @@ instance FromJSON PackageList where
   parseJSON (Object v) = do
     s <- v .: "snapshot"
     pkgs <- v .: "packages"
-    pure $ PackageList (ghc s) (created s) (name s) $ mkPackageMap pkgs
+    pure $ PackageList (snapshotGhc s) (snapshotCreated s) (snapshotName s) $ mkPackageMap pkgs
 
   parseJSON invalid = typeMismatch "PackageList" invalid
 
@@ -86,3 +89,13 @@ lookupPackages plist deps =
       case DM.lookup k pmap of
         Nothing -> Left k
         Just x -> Right (k, x)
+
+
+mergeExtraDeps :: StackConfig -> PackageList -> PackageList
+mergeExtraDeps scfg plist =
+  case stackExtraDeps scfg of
+    [] -> plist
+    xs -> plist { packageMap = DL.foldl' mergef (packageMap plist) xs }
+  where
+    mergef m (StackExtraDep name ver) =
+      DM.insertWith (\ a _ -> a) name (PackageInfo ver "extra-dep" False) m
