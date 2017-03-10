@@ -9,6 +9,7 @@ module Jenga.Stack
 import           Data.Aeson (FromJSON (..), Value (..), (.:))
 import           Data.Aeson.Types (typeMismatch)
 
+import qualified Data.List as DL
 import           Data.Monoid ((<>))
 
 import           Data.Text (Text)
@@ -40,12 +41,13 @@ instance FromJSON StackExtraDep where
   parseJSON invalid = typeMismatch "StackExtraDep" invalid
 
 parseStackExtraDep :: Text -> Parser StackExtraDep
-parseStackExtraDep str =
-  case T.splitOn "-" str of
-    [] -> fail $ "Can't find version number in extra-dep : " <> T.unpack str
-    [_] -> fail $ "Can't find version number in extra-dep : " <> T.unpack str
-    xs -> pure $ StackExtraDep (T.intercalate "-" $ init xs) (last xs)
-
+parseStackExtraDep str = do
+  -- Extra-deps are of the form 'packageMame-version' where packageName itself
+  -- may have a dash in it.
+  let xs = T.splitOn "-" str
+  if DL.length xs >= 2
+    then pure $ StackExtraDep (T.intercalate "-" $ init xs) (last xs)
+    else fail $ "Can't find version number in extra-dep : " <> T.unpack str
 
 readStackConfig :: IO (Either ParseException StackConfig)
 readStackConfig = Y.decodeFileEither stackYamlFile
