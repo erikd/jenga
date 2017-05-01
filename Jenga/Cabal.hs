@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Jenga.Cabal
   ( dependencyName
   , readPackageDependencies
@@ -12,18 +13,22 @@ import qualified Data.Map.Strict as DM
 import           Data.Text (Text)
 import qualified Data.Text as T
 
-import           Distribution.Package (Dependency (..), PackageIdentifier (..), PackageName (..))
+import           Distribution.Package (Dependency (..), PackageIdentifier (..), unPackageName)
 import           Distribution.PackageDescription
                     ( Benchmark, CondTree (..), ConfVar, Executable, GenericPackageDescription (..)
                     , PackageDescription (..), Library, TestSuite
                     )
+#if MIN_VERSION_Cabal (2,0,0)
+import           Distribution.PackageDescription.Parse (readGenericPackageDescription)
+#else
 import           Distribution.PackageDescription.Parse (readPackageDescription)
+import           Distribution.Verbosity (Verbosity)
+#endif
 import           Distribution.Verbosity (normal)
-
 
 readPackageDependencies :: FilePath -> IO [Dependency]
 readPackageDependencies fpath = do
-  genpkg <- readPackageDescription normal fpath
+  genpkg <- readGenericPackageDescription normal fpath
   pure
     $ sortNubByName
     $ filterPackageName (package $ packageDescription genpkg)
@@ -46,18 +51,24 @@ filterPackageName (PackageIdentifier pname _) =
     packageName (Dependency pn _) = pn
 
 dependencyName :: Dependency -> Text
-dependencyName (Dependency (PackageName name) _) = T.pack name
+dependencyName (Dependency name _) = T.pack $ unPackageName name
 
 
 extractLibraryDeps :: Maybe (CondTree ConfVar [Dependency] Library) -> [Dependency]
 extractLibraryDeps Nothing = []
 extractLibraryDeps (Just x) = condTreeConstraints x
 
-extractExecutableDeps :: [(String, CondTree ConfVar [Dependency] Executable)] -> [Dependency]
+extractExecutableDeps :: [(a, CondTree ConfVar [Dependency] Executable)] -> [Dependency]
 extractExecutableDeps = concatMap (condTreeConstraints . snd)
 
-extractTestSuiteDeps :: [(String, CondTree ConfVar [Dependency] TestSuite)] -> [Dependency]
+extractTestSuiteDeps :: [(a, CondTree ConfVar [Dependency] TestSuite)] -> [Dependency]
 extractTestSuiteDeps = concatMap (condTreeConstraints . snd)
 
-extractBenchmarkDeps :: [(String, CondTree ConfVar [Dependency] Benchmark)] -> [Dependency]
+extractBenchmarkDeps :: [(a, CondTree ConfVar [Dependency] Benchmark)] -> [Dependency]
 extractBenchmarkDeps = concatMap (condTreeConstraints . snd)
+
+#if MIN_VERSION_Cabal (2,0,0)
+#else
+readGenericPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
+readGenericPackageDescription = readPackageDescription
+#endif
