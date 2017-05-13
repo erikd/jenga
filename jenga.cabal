@@ -2,7 +2,7 @@
 --  see http://haskell.org/cabal/users-guide/
 
 name:                    jenga
-version:                 0.1.0.0
+version:                 0.1.1.0
 synopsis:                Generate a cabal freeze file from a stack.yaml
 -- description:
 homepage:                https://github.com/erikd/jenga
