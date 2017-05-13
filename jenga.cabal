@@ -4,13 +4,19 @@
 name:                    jenga
 version:                 0.1.1.0
 synopsis:                Generate a cabal freeze file from a stack.yaml
--- description:
+description:
+  Jenga is a tool that allows Haskell projects that are developed using the
+  Stack tool and infrastructure to be built using plain Cabal or alternatives
+  like Mafia. It works by reading the stack.yaml file to get the stack version,
+  querying the Stackage server for the package version for that stack version
+  and then generating a cabal freeze or mafia lock file.
+
 homepage:                https://github.com/erikd/jenga
 license:                 BSD2
 license-file:            LICENSE
 author:                  Erik de Castro Lopo
 maintainer:              erikd@mega-nerd.com
--- copyright:
+copyright:               Copyright (c) 2017 Erik de Castro Lopo
 category:                Development
 build-type:              Simple
 extra-source-files:      ChangeLog.md
