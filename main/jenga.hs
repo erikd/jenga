@@ -39,14 +39,14 @@ data OutputFormat
 data Command = Command FilePath OutputFormat
 
 pCommand :: Parser Command
-pCommand = Command <$> cabalFileP <*> outputFormatP
+pCommand = Command <$> stackYamlFileP <*> outputFormatP
 
-cabalFileP :: Parser FilePath
-cabalFileP = strOption
+stackYamlFileP :: Parser FilePath
+stackYamlFileP = strOption
   (  short 'i'
   <> long "input"
-  <> metavar "INPUT_CABAL_FILE"
-  <> help "The input cabal file."
+  <> metavar "INPUT_STACK_YAML_FILE"
+  <> help "The input stack.yaml file."
   )
 
 outputFormatP :: Parser OutputFormat
