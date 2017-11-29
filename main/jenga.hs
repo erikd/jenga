@@ -6,7 +6,8 @@ import           Data.Either (partitionEithers)
 import qualified Data.List as DL
 import           Data.Monoid ((<>))
 import           Data.Text (Text)
-import qualified Data.Text.Lazy.IO as T
+import qualified Data.Text.IO as T
+import qualified Data.Text.Lazy.IO as LT
 
 import           Jenga.Cabal
 import           Jenga.HTTP
@@ -90,7 +91,8 @@ processPackageList fmt deps plist = do
   let (missing, found) = partitionEithers $ lookupPackages plist deps
   unless (DL.null missing) $
     reportMissing missing
-  T.putStrLn . unLazyText $
+  T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
+  LT.putStrLn . unLazyText $
     case fmt of
       OutputCabal -> renderAsCabalConfig found
       OutputMafia -> renderAsMafiaLock found
