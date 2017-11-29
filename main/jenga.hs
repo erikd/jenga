@@ -19,7 +19,7 @@ import           Options.Applicative
                         , header, help, helper, info, long, metavar, short, strOption)
 
 import           System.IO (hPutStrLn, stderr)
-
+import           System.IO (hFlush, stdout)
 
 main :: IO ()
 main =
@@ -36,15 +36,24 @@ data OutputFormat
   = OutputCabal
   | OutputMafia
 
-data Command = Command FilePath OutputFormat
+data Command = Command CabalFilePath StackFilePath OutputFormat
+
 
 pCommand :: Parser Command
-pCommand = Command <$> stackYamlFileP <*> outputFormatP
+pCommand = Command <$> cabalFileP <*> stackYamlFileP <*> outputFormatP
 
-stackYamlFileP :: Parser FilePath
-stackYamlFileP = strOption
-  (  short 'i'
-  <> long "input"
+cabalFileP :: Parser CabalFilePath
+cabalFileP = CabalFilePath <$> strOption
+  (  short 'c'
+  <> long "cabal"
+  <> metavar "INPUT_CABAL_FILE"
+  <> help "The input cabal file."
+  )
+
+stackYamlFileP :: Parser StackFilePath
+stackYamlFileP = StackFilePath <$> strOption
+  (  short 's'
+  <> long "stack"
   <> metavar "INPUT_STACK_YAML_FILE"
   <> help "The input stack.yaml file."
   )
@@ -60,9 +69,10 @@ outputFormatP =
 -- -----------------------------------------------------------------------------
 
 process :: Command -> IO ()
-process (Command cabalpath fmt) = do
+process (Command cabalpath stackpath fmt) = do
   deps <- fmap dependencyName <$> readPackageDependencies cabalpath
-  mr <- readStackConfig
+  hFlush stdout
+  mr <- readStackConfig stackpath
   case mr of
     Left err -> putStrLn $ show err
     Right cfg -> processResolver fmt deps cfg

@@ -3,11 +3,14 @@
 module Jenga.Stack
   ( StackConfig (..)
   , StackExtraDep (..)
+  , StackFilePath (..)
   , readStackConfig
   ) where
 
 import           Data.Aeson (FromJSON (..), Value (..), (.:))
 import           Data.Aeson.Types (typeMismatch)
+
+import qualified Data.ByteString.Char8 as BS
 
 import qualified Data.List as DL
 import           Data.Monoid ((<>))
@@ -17,6 +20,8 @@ import qualified Data.Text as T
 import           Data.Yaml (ParseException, Parser)
 import qualified Data.Yaml as Y
 
+
+newtype StackFilePath = StackFilePath FilePath
 
 data StackConfig = StackConfig
   { stackResolver :: !Text
@@ -49,9 +54,9 @@ parseStackExtraDep str = do
     then pure $ StackExtraDep (T.intercalate "-" $ init xs) (last xs)
     else fail $ "Can't find version number in extra-dep : " <> T.unpack str
 
-readStackConfig :: IO (Either ParseException StackConfig)
-readStackConfig = Y.decodeFileEither stackYamlFile
-
-
-stackYamlFile :: FilePath
-stackYamlFile = "stack.yaml"
+readStackConfig :: StackFilePath -> IO (Either ParseException StackConfig)
+readStackConfig (StackFilePath stackYamlFile) =
+  Y.decodeEither' . cleanLines <$> BS.readFile stackYamlFile
+  where
+    cleanLines =
+      BS.unlines . map (BS.takeWhile (/= '#')) . BS.lines

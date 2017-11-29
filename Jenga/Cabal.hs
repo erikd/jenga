@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 module Jenga.Cabal
-  ( dependencyName
+  ( CabalFilePath (..)
+  , dependencyName
   , readPackageDependencies
   ) where
 
@@ -26,8 +27,12 @@ import           Distribution.Verbosity (Verbosity)
 #endif
 import           Distribution.Verbosity (normal)
 
-readPackageDependencies :: FilePath -> IO [Dependency]
-readPackageDependencies fpath = do
+
+newtype CabalFilePath = CabalFilePath FilePath
+
+
+readPackageDependencies :: CabalFilePath -> IO [Dependency]
+readPackageDependencies (CabalFilePath fpath) = do
   genpkg <- readGenericPackageDescription normal fpath
   pure
     $ sortNubByName
