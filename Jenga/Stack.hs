@@ -47,7 +47,7 @@ instance FromJSON StackExtraDep where
 
 parseStackExtraDep :: Text -> Parser StackExtraDep
 parseStackExtraDep str = do
-  -- Extra-deps are of the form 'packageMame-version' where packageName itself
+  -- Extra-deps are of the form 'packageName-version' where packageName itself
   -- may have a dash in it.
   let xs = T.splitOn "-" str
   if DL.length xs >= 2
@@ -56,7 +56,4 @@ parseStackExtraDep str = do
 
 readStackConfig :: StackFilePath -> IO (Either ParseException StackConfig)
 readStackConfig (StackFilePath stackYamlFile) =
-  Y.decodeEither' . cleanLines <$> BS.readFile stackYamlFile
-  where
-    cleanLines =
-      BS.unlines . map (BS.takeWhile (/= '#')) . BS.lines
+  Y.decodeEither' <$> BS.readFile stackYamlFile
