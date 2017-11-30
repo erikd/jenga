@@ -76,26 +76,25 @@ process (Command cabalpath stackpath fmt) = do
   mr <- readStackConfig stackpath
   case mr of
     Left err -> putStrLn $ show err
-    Right cfg -> processResolver fmt deps cfg
+    Right cfg -> processResolver cabalpath fmt deps cfg
 
-processResolver :: OutputFormat -> [Text] -> StackConfig -> IO ()
-processResolver fmt deps scfg = do
+processResolver :: CabalFilePath -> OutputFormat -> [Text] -> StackConfig -> IO ()
+processResolver cabalpath fmt deps scfg = do
   mpl <- getStackageResolverPkgList scfg
   case mpl of
     Left s -> putStrLn $ "Error parse JSON: " ++ s
-    Right pl -> processPackageList fmt deps pl
+    Right pl -> processPackageList cabalpath fmt deps pl
 
 
-processPackageList :: OutputFormat -> [Text] -> PackageList -> IO ()
-processPackageList fmt deps plist = do
+processPackageList :: CabalFilePath -> OutputFormat -> [Text] -> PackageList -> IO ()
+processPackageList cabalpath fmt deps plist = do
   let (missing, found) = partitionEithers $ lookupPackages plist deps
   unless (DL.null missing) $
     reportMissing missing
   T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
-  LT.putStrLn . unLazyText $
-    case fmt of
-      OutputCabal -> renderAsCabalConfig found
-      OutputMafia -> renderAsMafiaLock found
+  case fmt of
+    OutputCabal -> LT.putStrLn . unLazyText $ renderAsCabalConfig found
+    OutputMafia -> renderAsMafiaLock (toMafiaLockPath cabalpath $ ghcVersion plist) found
 
 
 reportMissing :: [Text] -> IO ()

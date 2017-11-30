@@ -28,14 +28,14 @@ library
 
   build-depends:        base                    >= 4.8            && < 5
                       , aeson                   == 1.1.*
+                      , bytestring              == 0.10.*
                       , Cabal                   >= 1.24         && < 2.1
                       , containers              == 0.5.*
-                      , bytestring              == 0.10.*
+                      , filepath                == 1.4.*
                       , http-conduit            == 2.2.*
                       , http-types              == 0.9.*
                       , text                    == 1.2.*
                       , yaml                    == 0.8.*
-
 
   exposed-modules:      Jenga.Cabal
                       , Jenga.PackageList
