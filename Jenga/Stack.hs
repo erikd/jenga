@@ -4,8 +4,11 @@ module Jenga.Stack
   ( StackConfig (..)
   , StackExtraDep (..)
   , StackFilePath (..)
+  , StackGitRepo (..)
   , readStackConfig
   ) where
+
+import           Control.Monad.Extra (mapMaybeM)
 
 import           Data.Aeson (FromJSON (..), Value (..), (.:))
 import           Data.Aeson.Types (typeMismatch)
@@ -17,6 +20,7 @@ import           Data.Monoid ((<>))
 
 import           Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Vector as V
 import           Data.Yaml (ParseException, Parser)
 import qualified Data.Yaml as Y
 
@@ -26,20 +30,49 @@ newtype StackFilePath = StackFilePath FilePath
 data StackConfig = StackConfig
   { stackResolver :: !Text
   , stackExtraDeps :: ![StackExtraDep]
+  , stackGitLocations :: ![StackGitRepo]
   }
   deriving (Eq, Show)
 
 instance FromJSON StackConfig where
-  parseJSON (Object v) = StackConfig
-        <$> v .: "resolver"
-        <*> v .: "extra-deps"
+  parseJSON (Object o) = StackConfig
+        <$> o .: "resolver"
+        <*> o .: "extra-deps"
+        <*> ((o .: "packages") >>= parseStackGitRepos)
 
   parseJSON invalid = typeMismatch "StackConfig" invalid
 
+parseStackGitRepos :: Value -> Parser [StackGitRepo]
+parseStackGitRepos v =
+  case v of
+    Array a -> mapMaybeM parseMaybe $ V.toList a
+    invalid -> typeMismatch "StackConfig" invalid
+  where
+    parseMaybe :: Value -> Parser (Maybe StackGitRepo)
+    parseMaybe (Object o) =
+      fmap Just $
+        (o .: "location") >>= \p ->
+          StackGitRepo
+            <$> p .: "git"
+            <*> p .: "commit"
+    parseMaybe _ = pure Nothing
 
-data StackExtraDep
-  = StackExtraDep !Text !Text
-  deriving (Eq, Show)
+
+data StackExtraDep = StackExtraDep
+  { sedName :: !Text
+  , sedVersion :: !Text
+  } deriving (Eq, Show)
+
+data StackGitRepo = StackGitRepo
+  { sgrUrl :: !Text
+  , sgrCommit :: !Text
+  } deriving (Eq, Show)
+
+instance FromJSON StackGitRepo where
+  parseJSON (Object o) = StackGitRepo
+        <$> o .: "git"
+        <*> o .: "commit"
+  parseJSON invalid = typeMismatch "StackGitRepo" invalid
 
 instance FromJSON StackExtraDep where
   parseJSON (String s) = parseStackExtraDep s
