@@ -1,9 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Jenga.Render
-  ( LazyText (..)
+  ( CabalFreezePath (..)
   , MafiaLockPath (..)
-  , renderAsCabalConfig
-  , renderAsMafiaLock
+  , writeCabalConfig
+  , writeMafiaLock
+  , toCabalFreezePath
   , toMafiaLockPath
   ) where
 
@@ -16,24 +17,24 @@ import qualified Data.Text.Lazy.IO as LT
 import           Jenga.PackageList
 import           Jenga.Cabal
 
-import           System.FilePath.Posix (addExtension, dropExtension)
+import           System.FilePath.Posix ((</>), addExtension, dropExtension, takeDirectory)
 
 
 newtype MafiaLockPath
   = MafiaLockPath { unMafiaLockPath :: FilePath }
 
-newtype LazyText
-  = LazyText { unLazyText :: LT.Text }
+newtype CabalFreezePath
+  = CabalFreezePath { unCabalFreezePath :: FilePath }
 
 
-renderAsCabalConfig :: [(Text, PackageInfo)] -> LazyText
-renderAsCabalConfig pkgs =
-  LazyText . LT.fromChunks $ "constraints: " : cabalLines
+writeCabalConfig :: CabalFreezePath -> [(Text, PackageInfo)] -> IO ()
+writeCabalConfig (CabalFreezePath fpath) pkgs =
+  LT.writeFile fpath . LT.fromChunks $ "constraints: " : cabalLines
   where
     cabalLines = DL.concat . DL.intersperse [",\n  "] $ DL.map renderPackage pkgs
 
-renderAsMafiaLock :: MafiaLockPath -> [(Text, PackageInfo)] -> IO ()
-renderAsMafiaLock (MafiaLockPath mpath) pkgs =
+writeMafiaLock :: MafiaLockPath -> [(Text, PackageInfo)] -> IO ()
+writeMafiaLock (MafiaLockPath mpath) pkgs =
   LT.writeFile mpath . LT.fromChunks $ DL.intercalate ["\n"] mafiaLines
   where
     mafiaLines = ["# mafia-lock-file-version: 0"] : DL.map renderPackage pkgs
@@ -46,3 +47,7 @@ renderPackage (name, pkg) =
 toMafiaLockPath :: CabalFilePath -> Text -> MafiaLockPath
 toMafiaLockPath (CabalFilePath fp) ghcVer =
   MafiaLockPath . addExtension (dropExtension fp) $ "lock-" ++ T.unpack ghcVer
+
+toCabalFreezePath :: CabalFilePath -> CabalFreezePath
+toCabalFreezePath (CabalFilePath fp) =
+  CabalFreezePath $ takeDirectory fp </> "cabal.config"

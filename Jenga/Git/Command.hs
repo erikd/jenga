@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Jenga.Git.Command
-  ( getAddSubmodule
+  ( gitAddSubmodule
   , gitCheckoutCommit
   , gitUpdate
   ) where
@@ -15,8 +15,8 @@ import           Jenga.Git.Process
 data JengaError
   = GitProcessError ProcessError
 
-getAddSubmodule :: FilePath -> String -> IO ()
-getAddSubmodule dest repo =
+gitAddSubmodule :: FilePath -> String -> IO ()
+gitAddSubmodule dest repo =
   git ["submodule", "add", repo, dest]
 
 gitCheckoutCommit :: String -> IO ()
@@ -25,13 +25,13 @@ gitCheckoutCommit hash =
 
 gitUpdate :: IO ()
 gitUpdate =
-  git ["update"]
+  git ["submodule", "update"]
 
 git :: [Argument] -> IO ()
 git args =
   void wibble
   where
-    wibble :: IO (Either JengaError Pass)
+    wibble :: IO (Either JengaError Hush)
     wibble = runEitherT $ call GitProcessError "git" args
 
 

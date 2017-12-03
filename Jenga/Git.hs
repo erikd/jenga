@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Jenga.Git
-  ( setupGitSubmodules
+  ( ModulesDirPath (..)
+  , setupGitSubmodules
   ) where
 
 import qualified Data.Text as T
@@ -37,9 +38,9 @@ buildSubmoduleDir (ModulesDirPath smp) gitrepo =
   case parseURI (T.unpack $ sgrUrl gitrepo) of
     Nothing -> error $ "Not able to parse " ++ show (sgrUrl gitrepo)
     Just uri ->
-      case split (/= '/') $ uriPath uri of
+      case split (== '/') $ uriPath uri of
         ["",  _, name] -> smp </> dropExtension name
-        _ -> error $ "buildSubmoduleDir: Bad git repo user/project: '" ++ uriPath uri ++ "'."
+        xs -> error $ "buildSubmoduleDir: Bad git repo user/project: " ++ show xs
 
 split :: Eq a => (a -> Bool) -> [a] -> [[a]]
 split p =
@@ -59,5 +60,7 @@ updateSubmodule dir gitrepo =
     gitCheckoutCommit $ T.unpack (sgrCommit gitrepo)
 
 addSubmodule :: FilePath -> StackGitRepo -> IO ()
-addSubmodule dir gitrepo =
-  getAddSubmodule dir $ T.unpack (sgrUrl gitrepo)
+addSubmodule dir gitrepo = do
+  gitAddSubmodule dir $ T.unpack (sgrUrl gitrepo)
+  withCurrentDirectory dir $
+    gitCheckoutCommit $ T.unpack (sgrCommit gitrepo)
