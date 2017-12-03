@@ -14,15 +14,15 @@ import           Network.URI (parseURI, uriPath)
 import           System.Directory (doesDirectoryExist, withCurrentDirectory)
 import           System.FilePath ((</>), dropExtension)
 
-newtype SubModulesPath = SubModulesPath FilePath
+newtype ModulesDirPath = ModulesDirPath FilePath
 
 
-setupGitSubmodules :: SubModulesPath ->  [StackGitRepo] -> IO ()
+setupGitSubmodules :: ModulesDirPath ->  [StackGitRepo] -> IO ()
 setupGitSubmodules smp =
   mapM_ (setupSubmodule smp)
 
 
-setupSubmodule :: SubModulesPath -> StackGitRepo -> IO ()
+setupSubmodule :: ModulesDirPath -> StackGitRepo -> IO ()
 setupSubmodule smp gitrepo = do
   let dir = buildSubmoduleDir smp gitrepo
   exists <- doesDirectoryExist dir
@@ -32,8 +32,8 @@ setupSubmodule smp gitrepo = do
 
 
 
-buildSubmoduleDir :: SubModulesPath -> StackGitRepo -> FilePath
-buildSubmoduleDir (SubModulesPath smp) gitrepo =
+buildSubmoduleDir :: ModulesDirPath -> StackGitRepo -> FilePath
+buildSubmoduleDir (ModulesDirPath smp) gitrepo =
   case parseURI (T.unpack $ sgrUrl gitrepo) of
     Nothing -> error $ "Not able to parse " ++ show (sgrUrl gitrepo)
     Just uri ->

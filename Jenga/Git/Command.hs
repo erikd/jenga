@@ -6,16 +6,32 @@ module Jenga.Git.Command
   , gitUpdate
   ) where
 
+import           Control.Monad (void)
+import           Control.Monad.Trans.Either (runEitherT)
 
+import           Jenga.Git.Process
+
+
+data JengaError
+  = GitProcessError ProcessError
 
 getAddSubmodule :: FilePath -> String -> IO ()
 getAddSubmodule dest repo =
-  putStrLn $ "git submodule add " ++ repo ++ " " ++ dest
+  git ["submodule", "add", repo, dest]
 
 gitCheckoutCommit :: String -> IO ()
 gitCheckoutCommit hash =
-  putStrLn $ "git checkout " ++ hash
+  git ["checkout", hash]
 
 gitUpdate :: IO ()
 gitUpdate =
-  putStrLn "git update"
+  git ["update"]
+
+git :: [Argument] -> IO ()
+git args =
+  void wibble
+  where
+    wibble :: IO (Either JengaError Pass)
+    wibble = runEitherT $ call GitProcessError "git" args
+
+
