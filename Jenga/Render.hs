@@ -35,7 +35,7 @@ writeCabalConfig (CabalFreezePath fpath) pkgs =
 
 writeMafiaLock :: MafiaLockPath -> [(Text, PackageInfo)] -> IO ()
 writeMafiaLock (MafiaLockPath mpath) pkgs =
-  LT.writeFile mpath . LT.fromChunks $ DL.intercalate ["\n"] mafiaLines
+  LT.writeFile mpath . LT.unlines $ DL.map LT.fromChunks mafiaLines
   where
     mafiaLines = ["# mafia-lock-file-version: 0"] : DL.map renderPackage pkgs
 
