@@ -16,8 +16,8 @@ import           Jenga.Render
 import           Jenga.Stack
 
 import           Options.Applicative
-                        ( CommandFields, Mod, Parser, ParserInfo, (<**>), action
-                        , help, helper, info, long, metavar, short, strOption)
+                        ( CommandFields, Mod, Parser, ParserInfo, ParserPrefs, (<**>)
+                        , action, help, helper, info, long, metavar, short, strOption)
 import qualified Options.Applicative as O
 
 
@@ -26,12 +26,14 @@ import           System.IO (hFlush, stdout)
 
 main :: IO ()
 main =
-  O.execParser opts >>= commandHandler
+  O.customExecParser p opts >>= commandHandler
   where
     opts :: ParserInfo Command
     opts = info (helper <*> pCommand)
       ( O.fullDesc <> O.header "jenaga - A tool for helping to build Stack projects"
       )
+    p :: ParserPrefs
+    p = O.prefs O.showHelpOnEmpty
 
 -- -----------------------------------------------------------------------------
 
@@ -65,6 +67,7 @@ subModulesDirP = ModulesDirPath <$> strOption
   <> long "modules"
   <> metavar "MODULES_DIRECTORY"
   <> help "The directory in which to put git submodules."
+  <> action "directory"
   )
 
 cabalFileP :: Parser CabalFilePath

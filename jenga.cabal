@@ -41,6 +41,7 @@ library
                       , network-uri             == 2.6.*
                       , process                 == 1.6.*
                       , text                    == 1.2.*
+                      , transformers            >= 0.4            && < 0.7
                       , transformers-either     == 0.0.*
                       , unix                    == 2.7.*
                       , vector                  == 0.12.*
@@ -66,5 +67,5 @@ executable jenga
 
   build-depends:        base
                       , jenga
-                      , optparse-applicative    == 0.13.*
+                      , optparse-applicative    == 0.14.*
                       , text
