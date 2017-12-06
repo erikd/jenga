@@ -12,10 +12,11 @@ import           Jenga.Stack
 
 import           Network.URI (parseURI, uriPath)
 
-import           System.Directory (doesDirectoryExist, withCurrentDirectory)
+import           System.Directory (createDirectoryIfMissing, doesDirectoryExist, withCurrentDirectory)
 import           System.FilePath ((</>), dropExtension)
 
-newtype ModulesDirPath = ModulesDirPath FilePath
+newtype ModulesDirPath
+  = ModulesDirPath { unModulesDirPath :: FilePath }
 
 
 setupGitSubmodules :: ModulesDirPath ->  [StackGitRepo] -> IO ()
@@ -25,6 +26,7 @@ setupGitSubmodules smp =
 
 setupSubmodule :: ModulesDirPath -> StackGitRepo -> IO ()
 setupSubmodule smp gitrepo = do
+  createDirectoryIfMissing False $ unModulesDirPath smp
   let dir = buildSubmoduleDir smp gitrepo
   exists <- doesDirectoryExist dir
   if exists

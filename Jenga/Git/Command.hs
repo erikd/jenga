@@ -24,7 +24,8 @@ gitCheckoutCommit hash =
   git ["checkout", hash]
 
 gitUpdate :: IO ()
-gitUpdate =
+gitUpdate = do
+  git ["fetch"]
   git ["submodule", "update"]
 
 git :: [Argument] -> IO ()
