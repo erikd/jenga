@@ -16,8 +16,8 @@ import           Jenga.Render
 import           Jenga.Stack
 
 import           Options.Applicative
-                        ( CommandFields, Mod, Parser, ParserInfo, (<**>), help
-                        , helper, info, long, metavar, short, strOption)
+                        ( CommandFields, Mod, Parser, ParserInfo, (<**>), action
+                        , help, helper, info, long, metavar, short, strOption)
 import qualified Options.Applicative as O
 
 
@@ -73,6 +73,7 @@ cabalFileP = CabalFilePath <$> strOption
   <> long "cabal"
   <> metavar "INPUT_CABAL_FILE"
   <> help "The input cabal file."
+  <> action "file"
   )
 
 stackYamlFileP :: Parser StackFilePath
@@ -81,6 +82,7 @@ stackYamlFileP = StackFilePath <$> strOption
   <> long "stack"
   <> metavar "INPUT_STACK_YAML_FILE"
   <> help "The input stack.yaml file."
+  <> action "file"
   )
 
 -- -----------------------------------------------------------------------------
