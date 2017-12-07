@@ -66,6 +66,7 @@ executable jenga
   main-is:              jenga.hs
 
   build-depends:        base
+                      , containers
                       , jenga
                       , optparse-applicative    == 0.14.*
                       , text

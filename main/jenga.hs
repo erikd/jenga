@@ -4,6 +4,8 @@ import           Control.Monad (unless)
 
 import           Data.Either (partitionEithers)
 import qualified Data.List as DL
+import           Data.Map.Strict (Map)
+import qualified Data.Map.Strict as DM
 import           Data.Monoid ((<>))
 import           Data.Text (Text)
 import qualified Data.Text.IO as T
@@ -106,7 +108,8 @@ genMafiaLock cabalpath stackpath = do
     Left err -> putStrLn $ show err
     Right cfg -> do
       plist <- processResolver cfg
-      processPackageList deps plist >>= writeMafiaLock (toMafiaLockPath cabalpath $ ghcVersion plist)
+      pkgs <- processPackageList deps plist
+      writeMafiaLock (toMafiaLockPath cabalpath $ ghcVersion plist) $ mergePackages pkgs (stackExtraDeps cfg)
 
 genCabalFreeze :: CabalFilePath -> StackFilePath -> IO ()
 genCabalFreeze cabalpath stackpath = do
@@ -117,7 +120,8 @@ genCabalFreeze cabalpath stackpath = do
     Left err -> putStrLn $ show err
     Right cfg -> do
       plist <- processResolver cfg
-      processPackageList deps plist >>= writeCabalConfig (toCabalFreezePath cabalpath)
+      pkgs <- processPackageList deps plist
+      writeCabalConfig (toCabalFreezePath cabalpath) $ mergePackages pkgs (stackExtraDeps cfg)
 
 
 handleSummodules :: ModulesDirPath -> StackFilePath -> IO ()
@@ -148,3 +152,20 @@ reportMissing :: [Text] -> IO ()
 reportMissing [] = putStrLn "No missing packages found."
 reportMissing xs =
   hPutStrLn stderr $ "The packages " ++ show xs ++ " could not be found in the specified stack resolver data."
+
+
+-- Merge the packages from the
+mergePackages :: [PackageInfo] -> [StackExtraDep] -> [PackageInfo]
+mergePackages pkgs deps =
+  DL.map mkPackage . DM.toList $ DL.foldl' insertExtraDep pkgMap deps
+  where
+    pkgMap :: Map Text Text -- packageName packageVersion
+    pkgMap =
+      DM.fromList $ DL.map (\p -> (packageName p, packageVersion p)) pkgs
+
+    insertExtraDep :: Map Text Text -> StackExtraDep -> Map Text Text
+    insertExtraDep pmap dep =
+      DM.insert (sedName dep) (sedVersion dep) pmap
+
+    mkPackage :: (Text, Text) -> PackageInfo
+    mkPackage (nam, ver) = PackageInfo nam ver
