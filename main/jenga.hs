@@ -135,13 +135,13 @@ processResolver scfg = do
     Right pl -> pure pl
 
 
-processPackageList :: [Text] -> PackageList -> IO [(Text, PackageInfo)]
+processPackageList :: [Text] -> PackageList -> IO [PackageInfo]
 processPackageList deps plist = do
   let (missing, found) = partitionEithers $ lookupPackages plist deps
   unless (DL.null missing) $
     reportMissing missing
   T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
-  pure found
+  pure $ map snd found
 
 
 reportMissing :: [Text] -> IO ()
