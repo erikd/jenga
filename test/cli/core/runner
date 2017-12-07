@@ -1,0 +1,50 @@
+JENGA="${1:-./dist/build/jenga/jenga}"
+
+type "$JENGA" > /dev/null 2>&1 || {
+    echo "No jenga executable specified on command line or on path."
+    exit 1
+}
+
+ROOT=$(dirname "$0")/../../..
+ROOT=$(cd "$ROOT" > /dev/null 2>&1 && pwd)
+TMP=${ROOT}/tmp
+TEST=${TMP}/test/$$
+mkdir -p ${TEST}
+
+cleanup () {
+    echo "Cleaning up (${TEST})"
+    rm -rf "${TEST}"
+}
+
+trap cleanup EXIT
+
+banner () {
+    echo
+    echo == "$*" ==
+    echo == "Running in ${TEST}" ==
+}
+
+exit_cleanup() {
+    cleanup
+    exit ${1:-1}
+}
+
+assert_file_exists () {
+    if test ! -f "$1" ; then
+        echo "Output file '$1' is missing."
+        echo ""
+        echo "FAILED [ ${NAME} ]"
+        echo ""
+        exit_cleanup
+    fi
+}
+
+sort_diff () {
+    EXP="$1"
+    ACTUAL="$2"
+    EXPECTED_SORTED=${OUTPUT_DIR}/sort_diff.expected.$(basename $EXP)
+    ACTUAL_SORTED=${OUTPUT_DIR}/sort_diff.actual.$(basename $ACTUAL)
+    sort ${EXP} > ${EXPECTED_SORTED}
+    sort ${ACTUAL} > ${ACTUAL_SORTED}
+    diff ${EXPECTED_SORTED} ${ACTUAL_SORTED}
+}
