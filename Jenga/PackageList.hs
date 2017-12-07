@@ -33,8 +33,6 @@ data Package = Package
 data PackageInfo = PackageInfo
   { packageName :: Text
   , packageVersion :: Text
-  , packageSynopsis :: Text
-  , packageCore :: Bool
   }
   deriving Show
 
@@ -74,8 +72,8 @@ mkPackageMap :: [Package] -> Map Text PackageInfo
 mkPackageMap =
   DM.fromList . fmap convert
   where
-    convert (Package nam ver syn core) =
-      (nam, PackageInfo nam ver syn core)
+    convert (Package nam ver _ _) =
+      (nam, PackageInfo nam ver)
 
 lookupPackages :: PackageList -> [Text] -> [Either Text (Text, PackageInfo)]
 lookupPackages plist deps =
