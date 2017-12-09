@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Jenga.PackageList
-  ( PackageInfo (..)
+  ( Package (..)
   , PackageList (..)
   , lookupPackages
   ) where
@@ -19,18 +19,18 @@ data PackageList = PackageList
   { ghcVersion :: Text
   , creatDate :: Text
   , resolverName :: Text
-  , packageMap :: Map Text PackageInfo
+  , packageMap :: Map Text Package
   }
   deriving Show
 
-data Package = Package
+data PackageTemp = PackageTemp -- Not exported
   { _pkgName :: Text
   , _pkgVer :: Text
   , _pkgSyn :: Text
   , _pkgCCore :: Bool
   }
 
-data PackageInfo = PackageInfo
+data Package = Package
   { packageName :: Text
   , packageVersion :: Text
   }
@@ -44,13 +44,13 @@ data Snapshot = Snapshot
   }
 
 
-instance FromJSON Package where
+instance FromJSON PackageTemp where
   parseJSON (Object v) =
-    Package <$> v .: "name"
+    PackageTemp <$> v .: "name"
             <*> v .: "version"
             <*> v .: "synopsis"
             <*> v .: "isCore"
-  parseJSON invalid = typeMismatch "Package" invalid
+  parseJSON invalid = typeMismatch "PackageTemp" invalid
 
 
 instance FromJSON Snapshot where
@@ -64,18 +64,18 @@ instance FromJSON PackageList where
   parseJSON (Object v) = do
     s <- v .: "snapshot"
     pkgs <- v .: "packages"
-    pure $ PackageList (snapshotGhc s) (snapshotCreated s) (snapshotName s) $ mkPackageMap pkgs
+    pure $ PackageList (snapshotGhc s) (snapshotCreated s) (snapshotName s) $ mkPackageTempMap pkgs
 
   parseJSON invalid = typeMismatch "PackageList" invalid
 
-mkPackageMap :: [Package] -> Map Text PackageInfo
-mkPackageMap =
+mkPackageTempMap :: [PackageTemp] -> Map Text Package
+mkPackageTempMap =
   DM.fromList . fmap convert
   where
-    convert (Package nam ver _ _) =
-      (nam, PackageInfo nam ver)
+    convert (PackageTemp nam ver _ _) =
+      (nam, Package nam ver)
 
-lookupPackages :: PackageList -> [Text] -> [Either Text (Text, PackageInfo)]
+lookupPackages :: PackageList -> [Text] -> [Either Text (Text, Package)]
 lookupPackages plist deps =
   fmap plookup deps
   where

@@ -27,19 +27,19 @@ newtype CabalFreezePath
   = CabalFreezePath { unCabalFreezePath :: FilePath }
 
 
-writeCabalConfig :: CabalFreezePath -> [PackageInfo] -> IO ()
+writeCabalConfig :: CabalFreezePath -> [Package] -> IO ()
 writeCabalConfig (CabalFreezePath fpath) pkgs =
   LT.writeFile fpath . LT.fromChunks $ "constraints: " : cabalLines
   where
     cabalLines = DL.concat . DL.intersperse [",\n  "] $ DL.map renderPackage pkgs
 
-writeMafiaLock :: MafiaLockPath -> [PackageInfo] -> IO ()
+writeMafiaLock :: MafiaLockPath -> [Package] -> IO ()
 writeMafiaLock (MafiaLockPath mpath) pkgs =
   LT.writeFile mpath . LT.unlines $ DL.map LT.fromChunks mafiaLines
   where
     mafiaLines = ["# mafia-lock-file-version: 0"] : DL.map renderPackage pkgs
 
-renderPackage :: PackageInfo -> [Text]
+renderPackage :: Package -> [Text]
 renderPackage pkg =
   [ packageName pkg, " == ", packageVersion pkg ]
 

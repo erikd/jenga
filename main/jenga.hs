@@ -139,7 +139,7 @@ processResolver scfg = do
     Right pl -> pure pl
 
 
-processPackageList :: [Text] -> PackageList -> IO [PackageInfo]
+processPackageList :: [Text] -> PackageList -> IO [Package]
 processPackageList deps plist = do
   let (missing, found) = partitionEithers $ lookupPackages plist deps
   unless (DL.null missing) $
@@ -155,7 +155,7 @@ reportMissing xs =
 
 
 -- Merge the packages from the
-mergePackages :: [PackageInfo] -> [StackExtraDep] -> [PackageInfo]
+mergePackages :: [Package] -> [StackExtraDep] -> [Package]
 mergePackages pkgs deps =
   DL.map mkPackage . DM.toList $ DL.foldl' insertExtraDep pkgMap deps
   where
@@ -167,5 +167,5 @@ mergePackages pkgs deps =
     insertExtraDep pmap dep =
       DM.insert (sedName dep) (sedVersion dep) pmap
 
-    mkPackage :: (Text, Text) -> PackageInfo
-    mkPackage (nam, ver) = PackageInfo nam ver
+    mkPackage :: (Text, Text) -> Package
+    mkPackage (nam, ver) = Package nam ver
