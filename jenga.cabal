@@ -52,6 +52,7 @@ library
                       , Jenga.Git
                       , Jenga.Git.Command
                       , Jenga.Git.Process
+                      , Jenga.Git.SubModules
                       , Jenga.HTTP
                       , Jenga.Render
                       , Jenga.Stack
