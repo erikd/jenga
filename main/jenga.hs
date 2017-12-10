@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import           Control.Monad (unless)
+import           Control.Monad (forM_, unless)
 
 import           Data.Either (partitionEithers)
 import qualified Data.List as DL
@@ -12,6 +12,7 @@ import qualified Data.Text.IO as T
 
 import           Jenga.Cabal
 import           Jenga.Git
+import           Jenga.Git.SubModules
 import           Jenga.HTTP
 import           Jenga.PackageList
 import           Jenga.Render
@@ -22,7 +23,8 @@ import           Options.Applicative
                         , action, help, helper, info, long, metavar, short, strOption)
 import qualified Options.Applicative as O
 
-
+import           System.Directory (doesDirectoryExist, listDirectory, withCurrentDirectory)
+import           System.FilePath ((</>), takeDirectory)
 import           System.IO (hPutStrLn, stderr)
 import           System.IO (hFlush, stdout)
 
@@ -39,11 +41,11 @@ main =
 
 -- -----------------------------------------------------------------------------
 
-
 data Command
-  = GenMafiaLock CabalFilePath StackFilePath
-  | GenCabalFreeze CabalFilePath StackFilePath
+  = GenCabalFreeze CabalFilePath StackFilePath
+  | GenMafiaLock CabalFilePath StackFilePath
   | ModulesDir ModulesDirPath StackFilePath
+  | Setup ModulesDirPath StackFilePath
 
 
 pCommand :: Parser Command
@@ -57,6 +59,13 @@ pCommand = O.subparser $ mconcat
   , subCommand "submods"
       "Read the given stack.yaml file, extract all git extra deprendencies, add them, and checkout the specified git hash."
       (ModulesDir <$> subModulesDirP <*> stackYamlFileP)
+
+  , subCommand "setup"
+      ( "Set up the project to be built with Mafia. Specifically that means:\n"
+      <> "  * add all git locations in the stack file as git submodules\n"
+      <> "  * find all the cabal files that are not submodules and generate a lock file")
+
+      (Setup <$> subModulesDirP <*> stackYamlFileP)
   ]
   where
     subCommand :: String -> String -> Parser a -> Mod CommandFields a
@@ -98,6 +107,7 @@ commandHandler cmd =
     GenMafiaLock cabalFile stackFile -> genMafiaLock cabalFile stackFile
     GenCabalFreeze cabalFile stackFile -> genCabalFreeze cabalFile stackFile
     ModulesDir subModsDir stackFile -> handleSummodules subModsDir stackFile
+    Setup  subModsDir stackFile -> setupProject subModsDir stackFile
 
 genMafiaLock :: CabalFilePath -> StackFilePath -> IO ()
 genMafiaLock cabalpath stackpath = do
@@ -130,6 +140,43 @@ handleSummodules subModsDir stackFile = do
   case mr of
     Left err -> putStrLn $ show err
     Right cfg -> setupGitSubmodules subModsDir $ stackGitLocations cfg
+
+setupProject :: ModulesDirPath -> StackFilePath -> IO ()
+setupProject subModsDir stackFile = do
+  mr <- readStackConfig stackFile
+  case mr of
+    Left err -> putStrLn $ show err
+    Right cfg -> do
+      setupGitSubmodules subModsDir $ stackGitLocations cfg
+      plist <- processResolver cfg
+      sm <- findSubmodules
+      cfiles <- findCabalFiles stackFile subModsDir
+      forM_ cfiles $ \ cabalpath -> do
+        deps <- fmap dependencyName <$> readPackageDependencies cabalpath
+        pkgs <- processPackageList deps plist
+        undefined cabalpath sm pkgs plist
+
+
+-- -----------------------------------------------------------------------------
+
+findCabalFiles :: StackFilePath -> ModulesDirPath -> IO [CabalFilePath]
+findCabalFiles (StackFilePath stackFile) (ModulesDirPath modsDir) =
+  withCurrentDirectory (takeDirectory stackFile) $
+    fmap CabalFilePath . filter isCabalFile <$> listDirectoryRecursive modsDir
+
+listDirectoryRecursive :: FilePath -> IO [FilePath]
+listDirectoryRecursive path = do
+  entries    <- fmap (path </>) <$> listDirectory path
+  subEntries <- mapM recurse entries
+  pure . concat $ entries : subEntries
+  where
+    recurse entry = do
+      isDir <- doesDirectoryExist entry
+      if isDir
+         then listDirectoryRecursive entry
+         else pure []
+
+-- -----------------------------------------------------------------------------
 
 processResolver :: StackConfig -> IO PackageList
 processResolver scfg = do

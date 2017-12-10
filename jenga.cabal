@@ -56,6 +56,7 @@ library
                       , Jenga.HTTP
                       , Jenga.Render
                       , Jenga.Stack
+                      , Jenga.Types
 
   other-extensions:     OverloadedStrings
 
@@ -68,6 +69,8 @@ executable jenga
 
   build-depends:        base
                       , containers
+                      , directory
+                      , filepath
                       , jenga
                       , optparse-applicative    == 0.14.*
                       , text

@@ -14,6 +14,8 @@ import qualified Data.Map.Strict as DM
 
 import           Data.Text (Text)
 
+import           Jenga.Types
+
 
 data PackageList = PackageList
   { ghcVersion :: Text
@@ -29,12 +31,6 @@ data PackageTemp = PackageTemp -- Not exported
   , _pkgSyn :: Text
   , _pkgCCore :: Bool
   }
-
-data Package = Package
-  { packageName :: Text
-  , packageVersion :: Text
-  }
-  deriving Show
 
 -- Temporary data type. Not exported.
 data Snapshot = Snapshot

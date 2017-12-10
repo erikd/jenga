@@ -3,6 +3,7 @@ module Jenga.Cabal
   ( CabalFilePath (..)
   , dependencyName
   , readPackageDependencies
+  , readPackageFromCabalFile
   ) where
 
 -- You would thing that since the Cabal file exposes its cabal parser you would
@@ -27,6 +28,8 @@ import           Distribution.Verbosity (Verbosity)
 #endif
 import           Distribution.Verbosity (normal)
 
+import           Jenga.Types
+
 
 newtype CabalFilePath = CabalFilePath FilePath
 
@@ -43,6 +46,13 @@ readPackageDependencies (CabalFilePath fpath) = do
         ++ extractBenchmarkDeps (condBenchmarks genpkg)
 
 
+readPackageFromCabalFile :: CabalFilePath -> IO Package
+readPackageFromCabalFile (CabalFilePath fpath) = do
+  pkgId <- package . packageDescription <$> readGenericPackageDescription normal fpath
+  pure $ Package (T.pack . unPackageName $ pkgName pkgId) (T.pack . show $ pkgVersion pkgId)
+
+-- -----------------------------------------------------------------------------
+
 sortNubByName :: [Dependency] -> [Dependency]
 sortNubByName = fmap toDep . DM.toList . DM.fromList . fmap fromDep
   where
@@ -51,9 +61,9 @@ sortNubByName = fmap toDep . DM.toList . DM.fromList . fmap fromDep
 
 filterPackageName :: PackageIdentifier -> [Dependency] -> [Dependency]
 filterPackageName (PackageIdentifier pname _) =
-  filter (\dep -> pname /= packageName dep )
+  filter (\dep -> pname /= pName dep )
   where
-    packageName (Dependency pn _) = pn
+    pName (Dependency pn _) = pn
 
 dependencyName :: Dependency -> Text
 dependencyName (Dependency name _) = T.pack $ unPackageName name

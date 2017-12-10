@@ -3,6 +3,7 @@
 module Jenga.Git.SubModules
   ( GitSubmodule (..)
   , findSubmodules
+  , isCabalFile
   ) where
 
 import           Control.Monad.Catch (handleIOError)
@@ -10,13 +11,17 @@ import           Control.Monad.Catch (handleIOError)
 import           Data.Char (isSpace)
 import qualified Data.List as DL
 
+import           Jenga.Cabal
+import           Jenga.Types
+
 import           System.Directory (listDirectory, doesDirectoryExist, getCurrentDirectory)
 import           System.FilePath ((</>), takeDirectory, takeExtension)
 
 
 data GitSubmodule = GitSubmodule
   { smDirectory :: FilePath
-  , smCabalFile :: FilePath
+  , smCabalFile :: CabalFilePath
+  , smPackage :: Package
   }
 
 
@@ -28,11 +33,14 @@ findSubmodules = do
     mkGitSubmodule dir = do
       files <- filter isCabalFile <$> listDirectory dir
       case files of
-        [x] -> pure $ GitSubmodule dir (dir </> x)
+        [x] -> do
+            let cf = CabalFilePath $ dir </> x
+            GitSubmodule dir cf <$> readPackageFromCabalFile cf
         xs -> error $ "findSubmodules :" ++ show xs
 
-    isCabalFile file =
-      takeExtension file == ".cabal"
+isCabalFile :: FilePath -> Bool
+isCabalFile file =
+  takeExtension file == ".cabal"
 
 readSubmodules :: FilePath -> IO [FilePath]
 readSubmodules fpath =
