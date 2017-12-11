@@ -1,4 +1,4 @@
-JENGA="${1:-./dist/build/jenga/jenga}"
+JENGA="$(pwd)/${1:-./dist/build/jenga/jenga}"
 
 type "$JENGA" > /dev/null 2>&1 || {
     echo "No jenga executable specified on command line or on path."

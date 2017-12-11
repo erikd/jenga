@@ -1,0 +1,41 @@
+#!/bin/sh -eu
+
+. $(dirname $0)/../core/runner
+
+testname="setup"
+
+banner "${testname}"
+#----------
+
+INPUT_DIR=$(dirname $0)/data
+OUTPUT_DIR=${TEST}
+EXPECTED_DIR=$(dirname $0)/expected
+
+mkdir -p $(dirname ${OUTPUT_DIR})
+
+cp -f ${INPUT_DIR}/* ${OUTPUT_DIR}
+
+(cd ${OUTPUT_DIR} && \
+  git init && \
+  git add stack.yaml setup-test.cabal && \
+  git commit -m "Initial commit" -- . && \
+  ls -al && \
+  $JENGA setup --stack stack.yaml --modules lib  )
+
+assert_file_exists ${OUTPUT_DIR}/setup-test.lock-8.0.2
+
+cat ${OUTPUT_DIR}/setup-test.lock-8.0.2
+
+error=0
+diff -q ${OUTPUT_DIR}/setup-test.lock-8.0.2 ${EXPECTED_DIR}/setup-test.lock-8.0.2 || error=1
+
+if test "${error}" = "0"; then
+    echo "PASSED [ ${testname} ]"
+    echo
+else
+    echo ""
+    echo "FAILED [ ${testname} ]"
+    echo ""
+    mgdiff ${OUTPUT_DIR}/setup-test.lock-8.0.2 ${EXPECTED_DIR}/setup-test.lock-8.0.2 || exit 0
+    exit_cleanup
+fi
