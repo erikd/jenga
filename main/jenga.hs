@@ -1,11 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import           Control.Monad (forM_, unless)
+import           Control.Monad (forM_)
 
 import           Data.Either (partitionEithers)
 import qualified Data.List as DL
-import           Data.Map.Strict (Map)
-import qualified Data.Map.Strict as DM
 import           Data.Monoid ((<>))
 import           Data.Text (Text)
 import qualified Data.Text.IO as T
@@ -15,6 +13,7 @@ import           Jenga.Git
 import           Jenga.Git.SubModules
 import           Jenga.HTTP
 import           Jenga.PackageList
+import           Jenga.Merge
 import           Jenga.Render
 import           Jenga.Stack
 
@@ -23,10 +22,9 @@ import           Options.Applicative
                         , action, help, helper, info, long, metavar, short, strOption)
 import qualified Options.Applicative as O
 
-import           System.Directory (doesDirectoryExist, listDirectory, withCurrentDirectory)
+import           System.Directory (doesDirectoryExist, listDirectory)
 import           System.FilePath ((</>), takeDirectory)
-import           System.IO (hPutStrLn, stderr)
-import           System.IO (hFlush, stdout)
+import           System.IO (hFlush, stderr, stdout)
 
 main :: IO ()
 main =
@@ -118,8 +116,9 @@ genMafiaLock cabalpath stackpath = do
     Left err -> putStrLn $ show err
     Right cfg -> do
       plist <- processResolver cfg
-      pkgs <- processPackageList deps plist
-      writeMafiaLock (toMafiaLockPath cabalpath $ ghcVersion plist) $ mergePackages pkgs (stackExtraDeps cfg)
+      T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
+      let pkgs = processPackageList deps plist
+      writeMafiaLock (toMafiaLockPath cabalpath $ ghcVersion plist) $ mergePackages pkgs (stackExtraDeps cfg) []
 
 genCabalFreeze :: CabalFilePath -> StackFilePath -> IO ()
 genCabalFreeze cabalpath stackpath = do
@@ -130,8 +129,9 @@ genCabalFreeze cabalpath stackpath = do
     Left err -> putStrLn $ show err
     Right cfg -> do
       plist <- processResolver cfg
-      pkgs <- processPackageList deps plist
-      writeCabalConfig (toCabalFreezePath cabalpath) $ mergePackages pkgs (stackExtraDeps cfg)
+      T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
+      let pkgs = processPackageList deps plist
+      writeCabalConfig (toCabalFreezePath cabalpath) $ mergePackages pkgs (stackExtraDeps cfg) []
 
 
 handleSummodules :: ModulesDirPath -> StackFilePath -> IO ()
@@ -149,20 +149,24 @@ setupProject subModsDir stackFile = do
     Right cfg -> do
       setupGitSubmodules subModsDir $ stackGitLocations cfg
       plist <- processResolver cfg
-      sm <- findSubmodules
-      cfiles <- findCabalFiles stackFile subModsDir
+      subMods <- findSubmodules
+      cfiles <- findProjetCabalFiles stackFile subModsDir
       forM_ cfiles $ \ cabalpath -> do
         deps <- fmap dependencyName <$> readPackageDependencies cabalpath
-        pkgs <- processPackageList deps plist
-        undefined cabalpath sm pkgs plist
+        T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
+        let pkgs = processPackageList deps plist
+        writeMafiaLock (toMafiaLockPath cabalpath $ ghcVersion plist)
+            $ mergePackages pkgs (stackExtraDeps cfg) subMods
+
 
 
 -- -----------------------------------------------------------------------------
 
-findCabalFiles :: StackFilePath -> ModulesDirPath -> IO [CabalFilePath]
-findCabalFiles (StackFilePath stackFile) (ModulesDirPath modsDir) =
-  withCurrentDirectory (takeDirectory stackFile) $
-    fmap CabalFilePath . filter isCabalFile <$> listDirectoryRecursive modsDir
+findProjetCabalFiles :: StackFilePath -> ModulesDirPath -> IO [CabalFilePath]
+findProjetCabalFiles (StackFilePath stackFile) (ModulesDirPath modsDir) =
+  fmap CabalFilePath . filter predicate <$> listDirectoryRecursive (takeDirectory stackFile)
+  where
+    predicate f = isCabalFile f && not (modsDir `DL.isPrefixOf` f)
 
 listDirectoryRecursive :: FilePath -> IO [FilePath]
 listDirectoryRecursive path = do
@@ -186,33 +190,6 @@ processResolver scfg = do
     Right pl -> pure pl
 
 
-processPackageList :: [Text] -> PackageList -> IO [Package]
+processPackageList :: [Text] -> PackageList -> [Package]
 processPackageList deps plist = do
-  let (missing, found) = partitionEithers $ lookupPackages plist deps
-  unless (DL.null missing) $
-    reportMissing missing
-  T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
-  pure $ map snd found
-
-
-reportMissing :: [Text] -> IO ()
-reportMissing [] = putStrLn "No missing packages found."
-reportMissing xs =
-  hPutStrLn stderr $ "The packages " ++ show xs ++ " could not be found in the specified stack resolver data."
-
-
--- Merge the packages from the
-mergePackages :: [Package] -> [StackExtraDep] -> [Package]
-mergePackages pkgs deps =
-  DL.map mkPackage . DM.toList $ DL.foldl' insertExtraDep pkgMap deps
-  where
-    pkgMap :: Map Text Text -- packageName packageVersion
-    pkgMap =
-      DM.fromList $ DL.map (\p -> (packageName p, packageVersion p)) pkgs
-
-    insertExtraDep :: Map Text Text -> StackExtraDep -> Map Text Text
-    insertExtraDep pmap dep =
-      DM.insert (sedName dep) (sedVersion dep) pmap
-
-    mkPackage :: (Text, Text) -> Package
-    mkPackage (nam, ver) = Package nam ver
+  map snd . snd $ partitionEithers $ lookupPackages plist deps
