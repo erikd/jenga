@@ -6,7 +6,6 @@ module Jenga.Git.Command
   , gitUpdate
   ) where
 
-import           Control.Monad (void)
 import           Control.Monad.Trans.Either (runEitherT)
 
 import           Jenga.Git.Process
@@ -14,6 +13,8 @@ import           Jenga.Git.Process
 
 data JengaError
   = GitProcessError ProcessError
+  deriving (Show)
+
 
 gitAddSubmodule :: FilePath -> String -> IO ()
 gitAddSubmodule dest repo =
@@ -30,7 +31,7 @@ gitUpdate = do
 
 git :: [Argument] -> IO ()
 git args =
-  void wibble
+  either (error . show) (const $ pure ()) =<< wibble
   where
     wibble :: IO (Either JengaError Hush)
     wibble = runEitherT $ call GitProcessError "git" args

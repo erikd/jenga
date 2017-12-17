@@ -54,6 +54,7 @@ library
                       , Jenga.Git.Process
                       , Jenga.Git.SubModules
                       , Jenga.HTTP
+                      , Jenga.IO
                       , Jenga.Merge
                       , Jenga.Render
                       , Jenga.Stack

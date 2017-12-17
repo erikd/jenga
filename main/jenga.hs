@@ -12,6 +12,7 @@ import           Jenga.Cabal
 import           Jenga.Git
 import           Jenga.Git.SubModules
 import           Jenga.HTTP
+import           Jenga.IO
 import           Jenga.PackageList
 import           Jenga.Merge
 import           Jenga.Render
@@ -22,7 +23,6 @@ import           Options.Applicative
                         , action, help, helper, info, long, metavar, short, strOption)
 import qualified Options.Applicative as O
 
-import           System.Directory (doesDirectoryExist, listDirectory)
 import           System.FilePath ((</>), takeDirectory)
 import           System.IO (hFlush, stderr, stdout)
 
@@ -105,7 +105,7 @@ commandHandler cmd =
     GenMafiaLock cabalFile stackFile -> genMafiaLock cabalFile stackFile
     GenCabalFreeze cabalFile stackFile -> genCabalFreeze cabalFile stackFile
     ModulesDir subModsDir stackFile -> handleSummodules subModsDir stackFile
-    Setup  subModsDir stackFile -> setupProject subModsDir stackFile
+    Setup subModsDir stackFile -> setupProject subModsDir stackFile
 
 genMafiaLock :: CabalFilePath -> StackFilePath -> IO ()
 genMafiaLock cabalpath stackpath = do
@@ -149,11 +149,11 @@ setupProject subModsDir stackFile = do
     Right cfg -> do
       setupGitSubmodules subModsDir $ stackGitLocations cfg
       plist <- processResolver cfg
+      T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
       subMods <- findSubmodules
       cfiles <- findProjetCabalFiles stackFile subModsDir
       forM_ cfiles $ \ cabalpath -> do
         deps <- fmap dependencyName <$> readPackageDependencies cabalpath
-        T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
         let pkgs = processPackageList deps plist
         writeMafiaLock (toMafiaLockPath cabalpath $ ghcVersion plist)
             $ mergePackages pkgs (stackExtraDeps cfg) subMods
@@ -166,19 +166,7 @@ findProjetCabalFiles :: StackFilePath -> ModulesDirPath -> IO [CabalFilePath]
 findProjetCabalFiles (StackFilePath stackFile) (ModulesDirPath modsDir) =
   fmap CabalFilePath . filter predicate <$> listDirectoryRecursive (takeDirectory stackFile)
   where
-    predicate f = isCabalFile f && not (modsDir `DL.isPrefixOf` f)
-
-listDirectoryRecursive :: FilePath -> IO [FilePath]
-listDirectoryRecursive path = do
-  entries    <- fmap (path </>) <$> listDirectory path
-  subEntries <- mapM recurse entries
-  pure . concat $ entries : subEntries
-  where
-    recurse entry = do
-      isDir <- doesDirectoryExist entry
-      if isDir
-         then listDirectoryRecursive entry
-         else pure []
+    predicate f = isCabalFile f && not (("." </> modsDir) `DL.isPrefixOf` f)
 
 -- -----------------------------------------------------------------------------
 

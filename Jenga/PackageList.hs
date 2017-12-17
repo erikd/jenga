@@ -7,7 +7,7 @@ module Jenga.PackageList
   ) where
 
 import           Data.Aeson (FromJSON (..), Value (..), (.:))
-import           Data.Aeson.Types (typeMismatch)
+import           Data.Aeson.Types (Parser, typeMismatch)
 
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as DM
@@ -27,7 +27,7 @@ data PackageList = PackageList
 
 data PackageTemp = PackageTemp -- Not exported
   { _pkgName :: Text
-  , _pkgVer :: Text
+  , _pkgVer :: Version
   , _pkgSyn :: Text
   , _pkgCCore :: Bool
   }
@@ -43,11 +43,14 @@ data Snapshot = Snapshot
 instance FromJSON PackageTemp where
   parseJSON (Object v) =
     PackageTemp <$> v .: "name"
-            <*> v .: "version"
+            <*> (parseVersion =<< v .: "version")
             <*> v .: "synopsis"
             <*> v .: "isCore"
   parseJSON invalid = typeMismatch "PackageTemp" invalid
 
+parseVersion :: Text -> Parser Version
+parseVersion =
+  pure . readVersion
 
 instance FromJSON Snapshot where
   parseJSON (Object v) =

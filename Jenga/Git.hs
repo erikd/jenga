@@ -56,13 +56,15 @@ split p =
 
 
 updateSubmodule :: FilePath -> StackGitRepo -> IO ()
-updateSubmodule dir gitrepo =
+updateSubmodule dir gitrepo = do
+  putStrLn $ "Updating submodule '" ++ dir ++ "' to commit " ++ T.unpack (T.take 10 $ sgrCommit gitrepo)
   withCurrentDirectory dir $ do
     gitUpdate
     gitCheckoutCommit $ T.unpack (sgrCommit gitrepo)
 
 addSubmodule :: FilePath -> StackGitRepo -> IO ()
 addSubmodule dir gitrepo = do
+  putStrLn $ "Adding submodule '" ++ dir ++ "' at commit " ++ T.unpack (T.take 10 $ sgrCommit gitrepo)
   gitAddSubmodule dir $ T.unpack (sgrUrl gitrepo)
   withCurrentDirectory dir $
     gitCheckoutCommit $ T.unpack (sgrCommit gitrepo)

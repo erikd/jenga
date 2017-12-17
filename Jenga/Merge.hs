@@ -28,13 +28,13 @@ mergePackages pkgs deps submods =
       pkgMap2 = DL.foldl' insertPackage pkgMap1 $ DL.map smPackage submods
   in DL.map mkPackage $ DM.toList pkgMap2
   where
-    insertExtraDep :: Map Text Text -> StackExtraDep -> Map Text Text
+    insertExtraDep :: Map Text Version -> StackExtraDep -> Map Text Version
     insertExtraDep pmap dep =
       DM.insert (sedName dep) (sedVersion dep) pmap
 
-    insertPackage :: Map Text Text -> Package -> Map Text Text
+    insertPackage :: Map Text Version -> Package -> Map Text Version
     insertPackage pmap pkg =
       DM.insert (packageName pkg) (packageVersion pkg) pmap
 
-    mkPackage :: (Text, Text) -> Package
+    mkPackage :: (Text, Version) -> Package
     mkPackage (nam, ver) = Package nam ver

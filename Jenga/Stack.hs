@@ -24,6 +24,8 @@ import qualified Data.Vector as V
 import           Data.Yaml (ParseException, Parser)
 import qualified Data.Yaml as Y
 
+import           Jenga.Types
+
 
 newtype StackFilePath = StackFilePath FilePath
 
@@ -60,7 +62,7 @@ parseStackGitRepos v =
 
 data StackExtraDep = StackExtraDep
   { sedName :: !Text
-  , sedVersion :: !Text
+  , sedVersion :: !Version
   } deriving (Eq, Show)
 
 data StackGitRepo = StackGitRepo
@@ -84,7 +86,7 @@ parseStackExtraDep str = do
   -- may have a dash in it.
   let xs = T.splitOn "-" str
   if DL.length xs >= 2
-    then pure $ StackExtraDep (T.intercalate "-" $ init xs) (last xs)
+    then pure $ StackExtraDep (T.intercalate "-" $ init xs) (readVersion $ last xs)
     else fail $ "Can't find version number in extra-dep : " <> T.unpack str
 
 readStackConfig :: StackFilePath -> IO (Either ParseException StackConfig)

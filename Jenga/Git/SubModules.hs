@@ -6,15 +6,18 @@ module Jenga.Git.SubModules
   , isCabalFile
   ) where
 
+import           Control.Monad (forM)
 import           Control.Monad.Catch (handleIOError)
+import           Control.Monad.Extra (concatMapM)
 
 import           Data.Char (isSpace)
 import qualified Data.List as DL
 
 import           Jenga.Cabal
+import           Jenga.IO
 import           Jenga.Types
 
-import           System.Directory (listDirectory, doesDirectoryExist, getCurrentDirectory)
+import           System.Directory (doesDirectoryExist, getCurrentDirectory)
 import           System.FilePath ((</>), takeDirectory, takeExtension)
 
 
@@ -28,15 +31,13 @@ data GitSubmodule = GitSubmodule
 findSubmodules :: IO [GitSubmodule]
 findSubmodules = do
   topdir <- findGitTopLevel
-  mapM mkGitSubmodule =<< readSubmodules topdir
+  concatMapM mkGitSubmodule =<< readSubmodules topdir
   where
     mkGitSubmodule dir = do
-      files <- filter isCabalFile <$> listDirectory dir
-      case files of
-        [x] -> do
-            let cf = CabalFilePath $ dir </> x
+      files <- filter isCabalFile <$> listDirectoryRecursive dir
+      forM files $ \ x -> do
+            let cf = CabalFilePath x
             GitSubmodule dir cf <$> readPackageFromCabalFile cf
-        xs -> error $ "findSubmodules :" ++ show xs
 
 isCabalFile :: FilePath -> Bool
 isCabalFile file =
@@ -50,10 +51,11 @@ readSubmodules fpath =
   where
     isPathLine xs = DL.isPrefixOf "path" $ dropWhile isSpace xs
 
+    clean = dropWhile isSpace . drop 1 . dropWhile (/= '=')
+
     handler :: IOError -> IO [a]
     handler e = print e >> pure []
 
-    clean = dropWhile isSpace . take 1 . dropWhile (/= '-')
 
 
 findGitTopLevel :: IO FilePath

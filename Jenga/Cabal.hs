@@ -49,7 +49,7 @@ readPackageDependencies (CabalFilePath fpath) = do
 readPackageFromCabalFile :: CabalFilePath -> IO Package
 readPackageFromCabalFile (CabalFilePath fpath) = do
   pkgId <- package . packageDescription <$> readGenericPackageDescription normal fpath
-  pure $ Package (T.pack . unPackageName $ pkgName pkgId) (T.pack . show $ pkgVersion pkgId)
+  pure $ Package (T.pack . unPackageName $ pkgName pkgId) (pkgVersion pkgId)
 
 -- -----------------------------------------------------------------------------
 

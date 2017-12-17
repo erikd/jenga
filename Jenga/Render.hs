@@ -16,6 +16,7 @@ import qualified Data.Text.Lazy.IO as LT
 
 import           Jenga.PackageList
 import           Jenga.Cabal
+import           Jenga.Types
 
 import           System.FilePath.Posix ((</>), addExtension, dropExtension, takeDirectory)
 
@@ -41,7 +42,10 @@ writeMafiaLock (MafiaLockPath mpath) pkgs =
 
 renderPackage :: Package -> [Text]
 renderPackage pkg =
-  [ packageName pkg, " == ", packageVersion pkg ]
+  [ packageName pkg, " == ", renderVersion (packageVersion pkg) ]
+  where
+    renderVersion =
+      T.pack . DL.intercalate "." . DL.map show . versionNumbers
 
 
 toMafiaLockPath :: CabalFilePath -> Text -> MafiaLockPath
