@@ -8,15 +8,7 @@ import           Data.Monoid ((<>))
 import           Data.Text (Text)
 import qualified Data.Text.IO as T
 
-import           Jenga.Cabal
-import           Jenga.Git
-import           Jenga.Git.SubModules
-import           Jenga.HTTP
-import           Jenga.IO
-import           Jenga.PackageList
-import           Jenga.Merge
-import           Jenga.Render
-import           Jenga.Stack
+import           Jenga
 
 import           Options.Applicative
                         ( CommandFields, Mod, Parser, ParserInfo, ParserPrefs, (<**>)
@@ -32,7 +24,7 @@ main =
   where
     opts :: ParserInfo Command
     opts = info (helper <*> pCommand)
-      ( O.fullDesc <> O.header "jenaga - A tool for helping to build Stack projects"
+      ( O.fullDesc <> O.header "jenga - A tool for helping to build Stack projects"
       )
     p :: ParserPrefs
     p = O.prefs O.showHelpOnEmpty
