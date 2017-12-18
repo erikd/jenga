@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import           Control.Monad (forM_)
+import           Control.Monad.Extra (concatMapM)
 
 import           Data.Either (partitionEithers)
 import qualified Data.List as DL
@@ -15,9 +16,8 @@ import           Options.Applicative
                         , action, help, helper, info, long, metavar, short, strOption)
 import qualified Options.Applicative as O
 
-import           System.Exit (exitFailure)
 import           System.FilePath ((</>), takeDirectory)
-import           System.IO (hFlush, hPutStrLn, stderr, stdout)
+import           System.IO (hFlush, stderr, stdout)
 
 main :: IO ()
 main =
@@ -154,7 +154,7 @@ setupProject subModsDir stackFile = do
       plist <- processResolver cfg
       T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
       subMods <- findSubmodules
-      cfiles <- findProjetCabalFiles stackFile subModsDir
+      cfiles <- findProjectCabalFiles stackFile subModsDir
       forM_ cfiles $ \ cabalpath -> do
         deps <- fmap dependencyName <$> readPackageDependencies cabalpath
         let pkgs = processPackageList deps plist
@@ -163,19 +163,25 @@ setupProject subModsDir stackFile = do
 
 
 initialize :: ModulesDirPath -> IO ()
-initialize _ = do
-  scfg <- either missingStackYaml pure =<< readStackConfig (StackFilePath "stack.yaml")
-  undefined scfg
-
-missingStackYaml :: a -> IO ()
-missingStackYaml _ = do
-  hPutStrLn stderr $ "Error : Expected to find a 'stack.yaml' file in the current directory."
-  exitFailure
+initialize modsDir = do
+  mscfg <- readStackConfig (StackFilePath "stack.yaml")
+  case mscfg of
+    Left err-> putStrLn $ show err
+    Right cfg -> do
+      cfiles <- findProjectCabalFiles (StackFilePath "stack.yaml") modsDir
+      setupGitSubmodules modsDir $ stackGitLocations cfg
+      deps <- DL.nub . fmap dependencyName <$> concatMapM readPackageDependencies cfiles
+      plist <- processResolver cfg
+      subMods <- findSubmodules
+      let pkgs = mergePackages (processPackageList deps plist) (stackExtraDeps cfg) subMods
+      T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
+      forM_ cfiles $ \ cabalpath -> do
+        writeMafiaLock (toMafiaLockPath cabalpath $ ghcVersion plist) pkgs
 
 -- -----------------------------------------------------------------------------
 
-findProjetCabalFiles :: StackFilePath -> ModulesDirPath -> IO [CabalFilePath]
-findProjetCabalFiles (StackFilePath stackFile) (ModulesDirPath modsDir) =
+findProjectCabalFiles :: StackFilePath -> ModulesDirPath -> IO [CabalFilePath]
+findProjectCabalFiles (StackFilePath stackFile) (ModulesDirPath modsDir) =
   fmap CabalFilePath . filter predicate <$> listDirectoryRecursive (takeDirectory stackFile)
   where
     predicate f = isCabalFile f && not (("." </> modsDir) `DL.isPrefixOf` f)

@@ -75,6 +75,7 @@ executable jenga
   build-depends:        base
                       , containers
                       , directory
+                      , extra
                       , filepath
                       , jenga
                       , optparse-applicative    == 0.14.*
