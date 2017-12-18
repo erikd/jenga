@@ -15,8 +15,9 @@ import           Options.Applicative
                         , action, help, helper, info, long, metavar, short, strOption)
 import qualified Options.Applicative as O
 
+import           System.Exit (exitFailure)
 import           System.FilePath ((</>), takeDirectory)
-import           System.IO (hFlush, stderr, stdout)
+import           System.IO (hFlush, hPutStrLn, stderr, stdout)
 
 main :: IO ()
 main =
@@ -36,6 +37,7 @@ data Command
   | GenMafiaLock CabalFilePath StackFilePath
   | ModulesDir ModulesDirPath StackFilePath
   | Setup ModulesDirPath StackFilePath
+  | Initialize ModulesDirPath
 
 
 pCommand :: Parser Command
@@ -54,8 +56,16 @@ pCommand = O.subparser $ mconcat
       ( "Set up the project to be built with Mafia. Specifically that means:\n"
       <> "  * add all git locations in the stack file as git submodules\n"
       <> "  * find all the cabal files that are not submodules and generate a lock file")
-
       (Setup <$> subModulesDirP <*> stackYamlFileP)
+
+  , subCommand "init"
+      ( "Initialize a project to be built with Mafia. Specifically that means:\n"
+      <> "  * Add all git locations in the stack file as git submodules\n"
+      <> "  * Find all the cabal files that are not submodules and generate a lock file for each\n"
+      <> "This command assumes that it is being run in a Git repo and that that 'stack.yaml' file is in the top level directory of the Git repo."
+      <> "This command will also generate a '.jenga' file in the top level directory.")
+      (Initialize <$> subModulesDirP)
+
   ]
   where
     subCommand :: String -> String -> Parser a -> Mod CommandFields a
@@ -98,6 +108,7 @@ commandHandler cmd =
     GenCabalFreeze cabalFile stackFile -> genCabalFreeze cabalFile stackFile
     ModulesDir subModsDir stackFile -> handleSummodules subModsDir stackFile
     Setup subModsDir stackFile -> setupProject subModsDir stackFile
+    Initialize subModsDir -> initialize subModsDir
 
 genMafiaLock :: CabalFilePath -> StackFilePath -> IO ()
 genMafiaLock cabalpath stackpath = do
@@ -151,6 +162,15 @@ setupProject subModsDir stackFile = do
             $ mergePackages pkgs (stackExtraDeps cfg) subMods
 
 
+initialize :: ModulesDirPath -> IO ()
+initialize _ = do
+  scfg <- either missingStackYaml pure =<< readStackConfig (StackFilePath "stack.yaml")
+  undefined scfg
+
+missingStackYaml :: a -> IO ()
+missingStackYaml _ = do
+  hPutStrLn stderr $ "Error : Expected to find a 'stack.yaml' file in the current directory."
+  exitFailure
 
 -- -----------------------------------------------------------------------------
 
