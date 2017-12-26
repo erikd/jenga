@@ -53,8 +53,10 @@ readSubmodules fpath =
 
     clean = dropWhile isSpace . drop 1 . dropWhile (/= '=')
 
+    -- This should only be needed if the '.gitmodules' file does not exist.
+    -- In that case we silently drop the error and return an empty list.
     handler :: IOError -> IO [a]
-    handler e = print e >> pure []
+    handler _ = pure []
 
 
 
