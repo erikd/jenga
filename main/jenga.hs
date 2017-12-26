@@ -35,8 +35,6 @@ main =
 data Command
   = GenCabalFreeze CabalFilePath StackFilePath
   | GenMafiaLock CabalFilePath StackFilePath
-  | ModulesDir ModulesDirPath StackFilePath
-  | Setup ModulesDirPath StackFilePath
   | Initialize ModulesDirPath
   | Update
 
@@ -49,15 +47,6 @@ pCommand = O.subparser $ mconcat
   , subCommand "genfreeze"
       "Generate a cabal freeze file for the given stack.yaml and cabal file."
       (GenCabalFreeze <$> cabalFileP <*> stackYamlFileP)
-  , subCommand "submods"
-      "Read the given stack.yaml file, extract all git extra deprendencies, add them, and checkout the specified git hash."
-      (ModulesDir <$> subModulesDirP <*> stackYamlFileP)
-
-  , subCommand "setup"
-      ( "Set up the project to be built with Mafia. Specifically that means:\n"
-      <> "  * add all git locations in the stack file as git submodules\n"
-      <> "  * find all the cabal files that are not submodules and generate a lock file")
-      (Setup <$> subModulesDirP <*> stackYamlFileP)
 
   , subCommand "init"
       ( "Initialize a project to be built with Mafia. Specifically that means:\n"
@@ -113,8 +102,7 @@ commandHandler cmd =
   case cmd of
     GenMafiaLock cabalFile stackFile -> genMafiaLock cabalFile stackFile
     GenCabalFreeze cabalFile stackFile -> genCabalFreeze cabalFile stackFile
-    ModulesDir subModsDir stackFile -> handleSummodules subModsDir stackFile
-    Setup subModsDir stackFile -> setupProject subModsDir stackFile
+
     Initialize subModsDir -> initialize subModsDir
     Update -> update
 
@@ -143,31 +131,6 @@ genCabalFreeze cabalpath stackpath = do
       T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
       let pkgs = processPackageList deps plist
       writeCabalConfig (toCabalFreezePath cabalpath) $ mergePackages pkgs (stackExtraDeps cfg) []
-
-
-handleSummodules :: ModulesDirPath -> StackFilePath -> IO ()
-handleSummodules subModsDir stackFile = do
-  mr <- readStackConfig stackFile
-  case mr of
-    Left err -> putStrLn $ show err
-    Right cfg -> setupGitSubmodules subModsDir $ stackGitLocations cfg
-
-setupProject :: ModulesDirPath -> StackFilePath -> IO ()
-setupProject subModsDir stackFile = do
-  mr <- readStackConfig stackFile
-  case mr of
-    Left err -> putStrLn $ show err
-    Right cfg -> do
-      setupGitSubmodules subModsDir $ stackGitLocations cfg
-      plist <- processResolver cfg
-      T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
-      subMods <- findSubmodules
-      cfiles <- findProjectCabalFiles stackFile subModsDir
-      forM_ cfiles $ \ cabalpath -> do
-        deps <- fmap dependencyName <$> readPackageDependencies cabalpath
-        let pkgs = processPackageList deps plist
-        writeMafiaLock (toMafiaLockPath cabalpath $ ghcVersion plist)
-            $ mergePackages pkgs (stackExtraDeps cfg) subMods
 
 
 initialize :: ModulesDirPath -> IO ()
