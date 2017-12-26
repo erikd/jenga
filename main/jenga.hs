@@ -38,6 +38,7 @@ data Command
   | ModulesDir ModulesDirPath StackFilePath
   | Setup ModulesDirPath StackFilePath
   | Initialize ModulesDirPath
+  | Update
 
 
 pCommand :: Parser Command
@@ -66,6 +67,12 @@ pCommand = O.subparser $ mconcat
       <> "This command will also generate a '.jenga' file in the top level directory.")
       (Initialize <$> subModulesDirP)
 
+  , subCommand "update"
+      ( "Update a previously initialized a project. A typical use case would be doing a"
+      <> "git pull on a project (which may have changed stack resolvers, exxtra dependencies"
+      <> "or other things) and want to build is the new updated project. This sub command"
+      <> "expects a '.jenga' file in the same directory as the 'stack.yaml' file.")
+      (pure Update)
   ]
   where
     subCommand :: String -> String -> Parser a -> Mod CommandFields a
@@ -109,6 +116,7 @@ commandHandler cmd =
     ModulesDir subModsDir stackFile -> handleSummodules subModsDir stackFile
     Setup subModsDir stackFile -> setupProject subModsDir stackFile
     Initialize subModsDir -> initialize subModsDir
+    Update -> update
 
 genMafiaLock :: CabalFilePath -> StackFilePath -> IO ()
 genMafiaLock cabalpath stackpath = do
@@ -164,19 +172,42 @@ setupProject subModsDir stackFile = do
 
 initialize :: ModulesDirPath -> IO ()
 initialize modsDir = do
+  escfg <- readStackConfig (StackFilePath "stack.yaml")
+  ejcfg <- readJengaConfig
+  case (escfg, ejcfg) of
+    (Left err, _) -> putStrLn $ show err
+    (Right scfg, Left JengaConfigMissing) -> do
+      runSetup scfg modsDir
+      writeJengaConfig $ JengaConfig (unModulesDirPath modsDir) True
+    (Right _, Left err) ->
+      putStrLn $ show err
+    (Right scfg, Right jcfg) -> do
+      T.putStrLn "Found existing Jenga config file and using that."
+      runSetup scfg (ModulesDirPath $ jcModulesDirPath jcfg)
+
+update :: IO ()
+update = do
   mscfg <- readStackConfig (StackFilePath "stack.yaml")
   case mscfg of
     Left err-> putStrLn $ show err
-    Right cfg -> do
-      cfiles <- findProjectCabalFiles (StackFilePath "stack.yaml") modsDir
-      setupGitSubmodules modsDir $ stackGitLocations cfg
-      deps <- DL.nub . fmap dependencyName <$> concatMapM readPackageDependencies cfiles
-      plist <- processResolver cfg
-      subMods <- findSubmodules
-      let pkgs = mergePackages (processPackageList deps plist) (stackExtraDeps cfg) subMods
-      T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
-      forM_ cfiles $ \ cabalpath -> do
-        writeMafiaLock (toMafiaLockPath cabalpath $ ghcVersion plist) pkgs
+    Right scfg -> do
+      ejcfg <- readJengaConfig
+      case ejcfg of
+        Left err-> putStrLn $ show err
+        Right jcfg ->
+          runSetup scfg (ModulesDirPath $ jcModulesDirPath jcfg)
+
+runSetup :: StackConfig -> ModulesDirPath -> IO ()
+runSetup stackCfg modsDir = do
+  cfiles <- findProjectCabalFiles (StackFilePath "stack.yaml") modsDir
+  setupGitSubmodules modsDir $ stackGitLocations stackCfg
+  deps <- DL.nub . fmap dependencyName <$> concatMapM readPackageDependencies cfiles
+  plist <- processResolver stackCfg
+  subMods <- findSubmodules
+  let pkgs = mergePackages (processPackageList deps plist) (stackExtraDeps stackCfg) subMods
+  T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
+  forM_ cfiles $ \ cabalpath -> do
+    writeMafiaLock (toMafiaLockPath cabalpath $ ghcVersion plist) pkgs
 
 -- -----------------------------------------------------------------------------
 
