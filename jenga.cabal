@@ -90,9 +90,10 @@ test-suite test
   main-is:              test.hs
 
   build-depends:        base
-                      , filepath == 1.4.*
-                      , hedgehog == 0.5.*
+                      , filepath
+                      , hedgehog                == 0.5.*
                       , jenga
+                      , text
 
 test-suite test-cli
   type:                 exitcode-stdio-1.0

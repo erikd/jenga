@@ -5,8 +5,10 @@ import           Control.Monad.Extra (concatMapM)
 
 import           Data.Either (partitionEithers)
 import qualified Data.List as DL
+import           Data.Maybe (fromMaybe)
 import           Data.Monoid ((<>))
 import           Data.Text (Text)
+import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
 import           Jenga
@@ -35,7 +37,7 @@ main =
 data Command
   = GenCabalFreeze CabalFilePath StackFilePath
   | GenMafiaLock CabalFilePath StackFilePath
-  | Initialize ModulesDirPath
+  | Initialize ModulesDirPath [Text]
   | Update
 
 
@@ -54,7 +56,7 @@ pCommand = O.subparser $ mconcat
       <> "  * Find all the cabal files that are not submodules and generate a lock file for each\n"
       <> "This command assumes that it is being run in a Git repo and that that 'stack.yaml' file is in the top level directory of the Git repo."
       <> "This command will also generate a '.jenga' file in the top level directory.")
-      (Initialize <$> subModulesDirP)
+      (Initialize <$> subModulesDirP <*> dropDepsP)
 
   , subCommand "update"
       ( "Update a previously initialized a project. A typical use case would be doing a"
@@ -69,12 +71,21 @@ pCommand = O.subparser $ mconcat
       O.command label (info (parser <**> helper) (O.progDesc description))
 
 subModulesDirP :: Parser ModulesDirPath
-subModulesDirP = ModulesDirPath <$> strOption
+subModulesDirP =
+  fmap (ModulesDirPath . fromMaybe "lib") <$> O.optional $ strOption
   (  short 'm'
   <> long "modules"
   <> metavar "MODULES_DIRECTORY"
-  <> help "The directory in which to put git submodules."
-  <> action "directory"
+  <> help "The optional directory in which to put git submodules (defaults to '/lib/')."
+  )
+
+dropDepsP :: Parser [Text]
+dropDepsP =
+  fmap (maybe [] (T.split (== ',') . T.pack)) <$> O.optional $ strOption
+  (  short 'd'
+  <> long "drop-deps"
+  <> metavar "DROP_DEPENDENCIES"
+  <> help "Comma separated list of dependencies to drop from the lock/freeze file. These will be saved to the '.jenga' file."
   )
 
 cabalFileP :: Parser CabalFilePath
@@ -103,7 +114,7 @@ commandHandler cmd =
     GenMafiaLock cabalFile stackFile -> genMafiaLock cabalFile stackFile
     GenCabalFreeze cabalFile stackFile -> genCabalFreeze cabalFile stackFile
 
-    Initialize subModsDir -> initialize subModsDir
+    Initialize subModsDir dropDeps -> initialize subModsDir dropDeps
     Update -> update
 
 genMafiaLock :: CabalFilePath -> StackFilePath -> IO ()
@@ -117,7 +128,7 @@ genMafiaLock cabalpath stackpath = do
       plist <- processResolver cfg
       T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
       let pkgs = processPackageList deps plist
-      writeMafiaLock (toMafiaLockPath cabalpath $ ghcVersion plist) $ mergePackages pkgs (stackExtraDeps cfg) []
+      writeMafiaLock (toMafiaLockPath cabalpath $ ghcVersion plist) $ mergePackages pkgs (stackExtraDeps cfg) [] []
 
 genCabalFreeze :: CabalFilePath -> StackFilePath -> IO ()
 genCabalFreeze cabalpath stackpath = do
@@ -130,23 +141,23 @@ genCabalFreeze cabalpath stackpath = do
       plist <- processResolver cfg
       T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
       let pkgs = processPackageList deps plist
-      writeCabalConfig (toCabalFreezePath cabalpath) $ mergePackages pkgs (stackExtraDeps cfg) []
+      writeCabalConfig (toCabalFreezePath cabalpath) $ mergePackages pkgs (stackExtraDeps cfg) [] []
 
 
-initialize :: ModulesDirPath -> IO ()
-initialize modsDir = do
+initialize :: ModulesDirPath -> [Text] -> IO ()
+initialize modsDir dropDeps = do
   escfg <- readStackConfig (StackFilePath "stack.yaml")
   ejcfg <- readJengaConfig
   case (escfg, ejcfg) of
     (Left err, _) -> putStrLn $ show err
     (Right scfg, Left JengaConfigMissing) -> do
-      runSetup scfg modsDir
-      writeJengaConfig $ JengaConfig (unModulesDirPath modsDir) True
+      runSetup scfg modsDir dropDeps
+      writeJengaConfig $ JengaConfig (unModulesDirPath modsDir) True dropDeps
     (Right _, Left err) ->
       putStrLn $ show err
     (Right scfg, Right jcfg) -> do
       T.putStrLn "Found existing Jenga config file and using that."
-      runSetup scfg (ModulesDirPath $ jcModulesDirPath jcfg)
+      runSetup scfg (ModulesDirPath $ jcModulesDirPath jcfg) dropDeps
 
 update :: IO ()
 update = do
@@ -158,16 +169,16 @@ update = do
       case ejcfg of
         Left err-> putStrLn $ show err
         Right jcfg ->
-          runSetup scfg (ModulesDirPath $ jcModulesDirPath jcfg)
+          runSetup scfg (ModulesDirPath $ jcModulesDirPath jcfg) (jcDropDeps jcfg)
 
-runSetup :: StackConfig -> ModulesDirPath -> IO ()
-runSetup stackCfg modsDir = do
+runSetup :: StackConfig -> ModulesDirPath -> [Text]-> IO ()
+runSetup stackCfg modsDir dropDeps = do
   cfiles <- findProjectCabalFiles (StackFilePath "stack.yaml") modsDir
   setupGitSubmodules modsDir $ stackGitLocations stackCfg
   deps <- DL.nub . fmap dependencyName <$> concatMapM readPackageDependencies cfiles
   plist <- processResolver stackCfg
   subMods <- findSubmodules
-  let pkgs = mergePackages (processPackageList deps plist) (stackExtraDeps stackCfg) subMods
+  let pkgs = mergePackages (processPackageList deps plist) (stackExtraDeps stackCfg) subMods dropDeps
   T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
   forM_ cfiles $ \ cabalpath -> do
     writeMafiaLock (toMafiaLockPath cabalpath $ ghcVersion plist) pkgs

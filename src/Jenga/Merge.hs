@@ -14,8 +14,8 @@ import           Jenga.Types
 
 -- Merge the packages from the resolver, the extra-deps and the git
 -- submodules.
-mergePackages :: [Package] -> [StackExtraDep] -> [GitSubmodule] -> [Package]
-mergePackages pkgs deps submods =
+mergePackages :: [Package] -> [StackExtraDep] -> [GitSubmodule] -> [Text] -> [Package]
+mergePackages pkgs deps submods dropDeps =
   -- Start with a `Map PkgName PkgVersion` generated from the packages listed
   -- by the stack resolver.
   let pkgMap0 = DM.fromList $ DL.map (\p -> (packageName p, packageVersion p)) pkgs
@@ -26,7 +26,10 @@ mergePackages pkgs deps submods =
   -- Finally add any packages that were listed as git repositories in the stack
   -- file. Again, these versions will override any existing package versions.
       pkgMap2 = DL.foldl' insertPackage pkgMap1 $ DL.map smPackage submods
-  in DL.map mkPackage $ DM.toList pkgMap2
+
+  -- Now remove all packages listed as drop dependencies.
+      pkgMap3 = DL.foldl' dropPackage pkgMap2 dropDeps
+  in DL.map (uncurry Package) $ DM.toList pkgMap3
   where
     insertExtraDep :: Map Text Version -> StackExtraDep -> Map Text Version
     insertExtraDep pmap dep =
@@ -36,5 +39,6 @@ mergePackages pkgs deps submods =
     insertPackage pmap pkg =
       DM.insert (packageName pkg) (packageVersion pkg) pmap
 
-    mkPackage :: (Text, Version) -> Package
-    mkPackage (nam, ver) = Package nam ver
+    dropPackage :: Map Text Version -> Text -> Map Text Version
+    dropPackage  pmap name =
+      DM.delete name pmap

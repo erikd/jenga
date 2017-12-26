@@ -7,12 +7,17 @@ module Jenga.Config
   , writeJengaConfig
   ) where
 
+import           Control.Monad.Extra (mapMaybeM)
+
 import           Data.Aeson (FromJSON (..), ToJSON (..), Value (..), (.:), (.=))
 import qualified Data.Aeson as Aeson
 import           Data.Aeson.Types (typeMismatch)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
+import           Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Vector as V
+import           Data.Yaml (Parser)
 import qualified Data.Yaml as Y
 
 import           Jenga.Types
@@ -21,8 +26,9 @@ import           System.IO.Error (isDoesNotExistError, tryIOError)
 
 
 data JengaConfig = JengaConfig
-  { jcModulesDirPath :: FilePath
-  , jcMafiaLock :: Bool
+  { jcModulesDirPath :: !FilePath
+  , jcMafiaLock :: !Bool
+  , jcDropDeps :: ![Text]
   }
   deriving (Eq, Show)
 
@@ -31,6 +37,7 @@ instance FromJSON JengaConfig where
     JengaConfig
       <$> o .: "submodule-dir"
       <*> o .: "mafia-lock"
+      <*> ((o .: "drop-deps") >>= parseDropDeps)
   parseJSON invalid =
     typeMismatch "JengaConfig" invalid
 
@@ -40,8 +47,18 @@ instance ToJSON JengaConfig where
     Aeson.object
       [ "submodule-dir" .= jcModulesDirPath cfg
       , "mafia-lock" .= jcMafiaLock cfg
+      , "drop-deps" .= jcDropDeps cfg
       ]
 
+parseDropDeps :: Value -> Parser [Text]
+parseDropDeps v =
+  case v of
+    Array a -> mapMaybeM parseMaybe $ V.toList a
+    invalid -> typeMismatch "parseDropDeps" invalid
+  where
+    parseMaybe :: Value -> Parser (Maybe Text)
+    parseMaybe (String s) = pure $ Just s
+    parseMaybe _ = pure Nothing
 
 parseJengaConfig :: ByteString -> Either JengaError JengaConfig
 parseJengaConfig bs =
