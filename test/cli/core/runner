@@ -1,5 +1,10 @@
 JENGA="$(pwd)/${1:-./dist/build/jenga/jenga}"
 
+DIFF=${USE_DIFF:-diff -u}
+
+# Failure is the default!
+RESULT="FAILED"
+
 type "$JENGA" > /dev/null 2>&1 || {
     echo "No jenga executable specified on command line or on path."
     exit 1
@@ -14,6 +19,8 @@ mkdir -p ${TEST}
 cleanup () {
     echo "Cleaning up (${TEST})"
     rm -rf "${TEST}"
+    echo ${RESULT}
+    echo
 }
 
 trap cleanup EXIT
@@ -24,19 +31,22 @@ banner () {
     echo == "Running in ${TEST}" ==
 }
 
-exit_cleanup() {
-    cleanup
-    exit ${1:-1}
-}
-
 assert_file_exists () {
     if test ! -f "$1" ; then
         echo "Output file '$1' is missing."
-        echo ""
-        echo "FAILED [ ${NAME} ]"
-        echo ""
-        exit_cleanup
+        fail_test
     fi
+}
+
+pass_test () {
+    RESULT="PASSED [ ${testname} ]"
+    exit 0
+}
+
+
+fail_test () {
+    RESULT="FAILED [ ${testname} ]"
+    exit 1
 }
 
 sort_diff () {
