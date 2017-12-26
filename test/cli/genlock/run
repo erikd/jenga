@@ -23,12 +23,7 @@ error=0
 diff -q ${OUTPUT_DIR}/first.lock-8.0.2 ${EXPECTED_DIR}/first.lock-8.0.2 || error=1
 
 if test "${error}" = "0"; then
-    echo "PASSED [ ${testname} ]"
-    echo
+	pass_test
 else
-    echo ""
-    echo "FAILED [ ${testname} ]"
-    echo ""
-    mgdiff ${OUTPUT_DIR}/first.lock-8.0.2 ${EXPECTED_DIR}/first.lock-8.0.2
-    exit_cleanup
+	fail_test
 fi
