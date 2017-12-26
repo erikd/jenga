@@ -19,7 +19,7 @@ cp -f ${INPUT_DIR}/* ${OUTPUT_DIR}
   git init && \
   git add stack.yaml ${testname}.cabal && \
   git commit -m "Initial commit" -- . && \
-  ${JENGA} init --modules lib  )
+  ${JENGA} init )
 
 assert_file_exists ${OUTPUT_DIR}/${testname}.lock-8.0.2
 
