@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Jenga.Types
-  ( Package (..)
+  ( JengaError (..)
+  , Package (..)
   , readVersion
 
   -- Re-export these from the Cabal library.
@@ -25,3 +26,9 @@ data Package = Package
 readVersion :: Text -> Version
 readVersion =
   mkVersion . DL.map (read . T.unpack ) . T.split (== '.')
+
+
+data JengaError
+  = JengaConfigMissing
+  | JengaConfigError !Text
+  deriving (Eq, Show)

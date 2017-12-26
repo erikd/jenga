@@ -3,6 +3,7 @@ module Jenga
   ) where
 
 import Jenga.Cabal as X
+import Jenga.Config as X
 import Jenga.PackageList as X
 import Jenga.Git as X
 import Jenga.Git.Command as X
