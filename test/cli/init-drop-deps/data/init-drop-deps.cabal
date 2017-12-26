@@ -1,0 +1,33 @@
+name:                init-extra-deps
+version:             0.0.0
+synopsis:            A test project for jenga
+
+description:         The simple combination of a simple cabal file and a stack.yaml file,
+                     but the the stack file specifies the stack resolver and some extra
+                     dependencies.
+
+license:             MIT
+license-file:        LICENSE
+author:              Erik de Castro Lopo
+maintainer:          erikd@mega-nerd.com
+category:            Test
+build-type:          Simple
+cabal-version:       >= 1.10
+
+library
+  ghc-options:         -Wall -fwarn-tabs
+  default-language:    Haskell2010
+  hs-source-dirs:      src
+
+  exposed-modules:     Test.Jenga.Init.ExtraDeps
+
+  build-depends:       base
+                     , binary
+                     , bytestring
+                     , containers
+                     , directory
+                     , exceptions
+                     , extra
+                     , filepath
+                     , time
+                     , wide-word
