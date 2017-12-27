@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Jenga.Git
-  ( ModulesDirPath (..)
-  , setupGitSubmodules
+  ( setupGitSubmodules
   ) where
 
 import qualified Data.Text as T
 
+import           Jenga.Config
 import           Jenga.Git.Command
 import           Jenga.Stack
 
@@ -14,9 +14,6 @@ import           Network.URI (parseURI, uriPath)
 
 import           System.Directory (createDirectoryIfMissing, doesDirectoryExist, withCurrentDirectory)
 import           System.FilePath ((</>), dropExtension)
-
-newtype ModulesDirPath
-  = ModulesDirPath { unModulesDirPath :: FilePath }
 
 
 setupGitSubmodules :: ModulesDirPath ->  [StackGitRepo] -> IO ()

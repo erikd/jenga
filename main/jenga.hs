@@ -35,7 +35,7 @@ main =
 -- -----------------------------------------------------------------------------
 
 data Command
-  = Initialize ModulesDirPath [Text] LockFormat
+  = Initialize JengaConfig
   | Update
 
 
@@ -47,7 +47,7 @@ pCommand = O.subparser $ mconcat
       <> "  * Find all the cabal files that are not submodules and generate a lock file for each\n"
       <> "This command assumes that it is being run in a Git repo and that that 'stack.yaml' file is in the top level directory of the Git repo."
       <> "This command will also generate a '.jenga' file in the top level directory.")
-      (Initialize <$> subModulesDirP <*> dropDepsP <*> lockFormatP)
+      (Initialize <$> jengaConfigP)
 
   , subCommand "update"
       ( "Update a previously initialized a project. A typical use case would be doing a"
@@ -60,6 +60,10 @@ pCommand = O.subparser $ mconcat
     subCommand :: String -> String -> Parser a -> Mod CommandFields a
     subCommand label description parser =
       O.command label (info (parser <**> helper) (O.progDesc description))
+
+jengaConfigP :: Parser JengaConfig
+jengaConfigP =
+  JengaConfig <$> subModulesDirP <*> lockFormatP <*> dropDepsP
 
 subModulesDirP :: Parser ModulesDirPath
 subModulesDirP =
@@ -91,23 +95,23 @@ lockFormatP =  O.flag MafiaLock CabalFreeze
 commandHandler :: Command -> IO ()
 commandHandler cmd =
   case cmd of
-    Initialize subModsDir dropDeps lockFormat -> initialize subModsDir dropDeps lockFormat
+    Initialize cfg -> initialize cfg
     Update -> update
 
-initialize :: ModulesDirPath -> [Text] -> LockFormat -> IO ()
-initialize modsDir dropDeps lockFormat = do
+initialize :: JengaConfig -> IO ()
+initialize jcfg = do
   escfg <- readStackConfig (StackFilePath "stack.yaml")
   ejcfg <- readJengaConfig
   case (escfg, ejcfg) of
     (Left err, _) -> putStrLn $ show err
     (Right scfg, Left JengaConfigMissing) -> do
-      runSetup scfg modsDir dropDeps lockFormat
-      writeJengaConfig $ JengaConfig (unModulesDirPath modsDir) lockFormat dropDeps
+      runSetup scfg jcfg
+      writeJengaConfig jcfg
     (Right _, Left err) ->
       putStrLn $ show err
-    (Right scfg, Right jcfg) -> do
+    (Right scfg, Right jcfg') -> do
       T.putStrLn "Found existing Jenga config file and using that."
-      runSetup scfg (ModulesDirPath $ jcModulesDirPath jcfg) dropDeps lockFormat
+      runSetup scfg jcfg'
 
 update :: IO ()
 update = do
@@ -119,10 +123,10 @@ update = do
       case ejcfg of
         Left err-> putStrLn $ show err
         Right jcfg ->
-          runSetup scfg (ModulesDirPath $ jcModulesDirPath jcfg) (jcDropDeps jcfg) (jcMafiaLock jcfg)
+          runSetup scfg jcfg
 
-runSetup :: StackConfig -> ModulesDirPath -> [Text]-> LockFormat -> IO ()
-runSetup stackCfg modsDir dropDeps lockFormat = do
+runSetup :: StackConfig -> JengaConfig -> IO ()
+runSetup stackCfg (JengaConfig modsDir lockFormat dropDeps) = do
   cfiles <- findProjectCabalFiles (StackFilePath "stack.yaml") modsDir
   setupGitSubmodules modsDir $ stackGitLocations stackCfg
   deps <- DL.nub . fmap dependencyName <$> concatMapM readPackageDependencies cfiles

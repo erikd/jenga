@@ -23,7 +23,7 @@ genJengaConfig =
     <*> Gen.list (Range.linear 0 5) genPackageName
   where
     localPath =
-      joinPath <$> Gen.list (Range.linear 1 5) pathName
+      ModulesDirPath . joinPath <$> Gen.list (Range.linear 1 5) pathName
 
     pathName =
       Gen.list (Range.linear 1 10) $

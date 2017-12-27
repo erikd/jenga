@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Jenga.Config
   ( JengaConfig (..)
+  , ModulesDirPath (..)
   , readJengaConfig
   , parseJengaConfig
   , renderJengaConfig
@@ -25,8 +26,12 @@ import           Jenga.Types
 import           System.IO.Error (isDoesNotExistError, tryIOError)
 
 
+newtype ModulesDirPath
+  = ModulesDirPath { unModulesDirPath :: FilePath }
+  deriving (Eq, Show)
+
 data JengaConfig = JengaConfig
-  { jcModulesDirPath :: !FilePath
+  { jcModulesDirPath :: !ModulesDirPath
   , jcMafiaLock :: !LockFormat
   , jcDropDeps :: ![Text]
   }
@@ -35,7 +40,7 @@ data JengaConfig = JengaConfig
 instance FromJSON JengaConfig where
   parseJSON (Object o) =
     JengaConfig
-      <$> o .: "submodule-dir"
+      <$> (ModulesDirPath <$> o .: "submodule-dir")
       <*> ((o .: "mafia-lock") >>= toLockFormat)
       <*> ((o .: "drop-deps") >>= parseDropDeps)
   parseJSON invalid =
@@ -48,7 +53,7 @@ toLockFormat b =
 instance ToJSON JengaConfig where
   toJSON cfg =
     Aeson.object
-      [ "submodule-dir" .= jcModulesDirPath cfg
+      [ "submodule-dir" .= unModulesDirPath (jcModulesDirPath cfg)
       , "mafia-lock" .= (jcMafiaLock cfg == MafiaLock)
       , "drop-deps" .= jcDropDeps cfg
       ]
