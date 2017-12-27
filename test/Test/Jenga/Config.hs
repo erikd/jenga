@@ -17,7 +17,10 @@ import           System.FilePath (joinPath)
 
 genJengaConfig :: Gen JengaConfig
 genJengaConfig =
-  JengaConfig <$> localPath <*> Gen.bool <*> Gen.list (Range.linear 0 5) genPackageName
+  JengaConfig
+    <$> localPath
+    <*> Gen.element [ MafiaLock, CabalFreeze ]
+    <*> Gen.list (Range.linear 0 5) genPackageName
   where
     localPath =
       joinPath <$> Gen.list (Range.linear 1 5) pathName
