@@ -1,0 +1,34 @@
+#!/bin/sh -eu
+
+# This test shows that Jenga fails if submodules dir contains any regular files.
+# It should only contain directories.
+
+. $(dirname $0)/../core/runner
+
+testname="init-submodules-dir"
+
+banner "${testname}"
+#----------
+
+INPUT_DIR=$(dirname $0)/data
+OUTPUT_DIR=${TEST}
+EXPECTED_DIR=$(dirname $0)/expected
+
+mkdir -p $(dirname ${OUTPUT_DIR})
+
+cp -rf ${INPUT_DIR}/* ${OUTPUT_DIR}
+
+(cd ${OUTPUT_DIR} && \
+  git init && \
+  git add stack.yaml ${testname}.cabal && \
+  git commit -m "Initial commit" -- . )
+
+error=0
+(cd ${OUTPUT_DIR} && \
+  (${JENGA} init || error=1) )
+
+if test "${error}" = "0"; then
+	pass_test
+else
+	fail_test
+fi
