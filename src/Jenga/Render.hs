@@ -1,10 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Jenga.Render
-  ( CabalFreezePath (..)
-  , MafiaLockPath (..)
-  , writeCabalConfig
-  , writeMafiaLock
-  , toCabalFreezePath
+  ( LockFilePath (..)
+  , writeLockFile
+  , toLockPath
   , toMafiaLockPath
   ) where
 
@@ -21,21 +19,34 @@ import           Jenga.Types
 import           System.FilePath.Posix ((</>), addExtension, dropExtension, takeDirectory)
 
 
-newtype MafiaLockPath
-  = MafiaLockPath { unMafiaLockPath :: FilePath }
-
-newtype CabalFreezePath
-  = CabalFreezePath { unCabalFreezePath :: FilePath }
+data LockFilePath
+  = MafiaLockPath !FilePath
+  | CabalFreezePath !FilePath
 
 
-writeCabalConfig :: CabalFreezePath -> [Package] -> IO ()
-writeCabalConfig (CabalFreezePath fpath) pkgs =
-  LT.writeFile fpath . LT.fromChunks $ "constraints: " : cabalLines
+writeLockFile :: LockFilePath -> [Package] -> IO ()
+writeLockFile lockPath =
+  case lockPath of
+    MafiaLockPath mpath -> writeMafiaLock mpath
+    CabalFreezePath cpath -> writeCabalConfig cpath
+
+toLockPath :: LockFormat -> CabalFilePath -> Text -> LockFilePath
+toLockPath lockFormat cfpath ghcVer =
+  case lockFormat of
+    MafiaLock -> toMafiaLockPath cfpath ghcVer
+    CabalFreeze -> toCabalFreezePath cfpath
+
+writeCabalConfig :: FilePath -> [Package] -> IO ()
+writeCabalConfig fpath pkgs =
+  LT.writeFile fpath . LT.unlines $ DL.map LT.fromChunks cabalLines
   where
-    cabalLines = DL.concat . DL.intersperse [",\n  "] $ DL.map renderPackage pkgs
+    cabalLines = ["constraints:"] : DL.map renderCabalPackage pkgs
 
-writeMafiaLock :: MafiaLockPath -> [Package] -> IO ()
-writeMafiaLock (MafiaLockPath mpath) pkgs =
+    renderCabalPackage pkg =
+      "  " : renderPackage pkg ++ [","]
+
+writeMafiaLock :: FilePath -> [Package] -> IO ()
+writeMafiaLock mpath pkgs =
   LT.writeFile mpath . LT.unlines $ DL.map LT.fromChunks mafiaLines
   where
     mafiaLines = ["# mafia-lock-file-version: 0"] : DL.map renderPackage pkgs
@@ -48,10 +59,10 @@ renderPackage pkg =
       T.pack . DL.intercalate "." . DL.map show . versionNumbers
 
 
-toMafiaLockPath :: CabalFilePath -> Text -> MafiaLockPath
+toMafiaLockPath :: CabalFilePath -> Text -> LockFilePath
 toMafiaLockPath (CabalFilePath fp) ghcVer =
   MafiaLockPath . addExtension (dropExtension fp) $ "lock-" ++ T.unpack ghcVer
 
-toCabalFreezePath :: CabalFilePath -> CabalFreezePath
+toCabalFreezePath :: CabalFilePath -> LockFilePath
 toCabalFreezePath (CabalFilePath fp) =
   CabalFreezePath $ takeDirectory fp </> "cabal.config"

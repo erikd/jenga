@@ -2,6 +2,7 @@
 
 module Jenga.Types
   ( JengaError (..)
+  , LockFormat (..)
   , Package (..)
   , readVersion
 
@@ -16,6 +17,11 @@ import           Data.Text (Text)
 import qualified Data.Text as T
 
 import           Distribution.Version (Version, mkVersion, versionNumbers)
+
+data LockFormat
+  = MafiaLock
+  | CabalFreeze
+  deriving (Eq, Show)
 
 data Package = Package
   { packageName :: Text

@@ -27,7 +27,7 @@ import           System.IO.Error (isDoesNotExistError, tryIOError)
 
 data JengaConfig = JengaConfig
   { jcModulesDirPath :: !FilePath
-  , jcMafiaLock :: !Bool
+  , jcMafiaLock :: !LockFormat
   , jcDropDeps :: ![Text]
   }
   deriving (Eq, Show)
@@ -36,17 +36,20 @@ instance FromJSON JengaConfig where
   parseJSON (Object o) =
     JengaConfig
       <$> o .: "submodule-dir"
-      <*> o .: "mafia-lock"
+      <*> ((o .: "mafia-lock") >>= toLockFormat)
       <*> ((o .: "drop-deps") >>= parseDropDeps)
   parseJSON invalid =
     typeMismatch "JengaConfig" invalid
 
+toLockFormat :: Bool -> Parser LockFormat
+toLockFormat b =
+  pure $ if b then MafiaLock else CabalFreeze
 
 instance ToJSON JengaConfig where
   toJSON cfg =
     Aeson.object
       [ "submodule-dir" .= jcModulesDirPath cfg
-      , "mafia-lock" .= jcMafiaLock cfg
+      , "mafia-lock" .= (jcMafiaLock cfg == MafiaLock)
       , "drop-deps" .= jcDropDeps cfg
       ]
 
