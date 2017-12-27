@@ -15,19 +15,21 @@ import           Jenga
 
 import           Options.Applicative
                         ( CommandFields, Mod, Parser, ParserInfo, ParserPrefs, (<**>)
-                        , help, helper, info, long, metavar, short, strOption)
+                        , help, helper, long, metavar, short, strOption)
 import qualified Options.Applicative as O
 
 import           System.Exit (exitFailure)
 import           System.FilePath ((</>), takeDirectory)
 import           System.IO (stderr)
 
+import           Text.PrettyPrint.ANSI.Leijen (Doc)
+
 main :: IO ()
 main =
   O.customExecParser p opts >>= commandHandler
   where
     opts :: ParserInfo Command
-    opts = info (helper <*> pCommand)
+    opts = O.info (helper <*> pCommand)
       ( O.fullDesc <> O.header "jenga - A tool for helping to build Stack projects"
       )
     p :: ParserPrefs
@@ -58,9 +60,9 @@ pCommand = O.subparser $ mconcat
       (pure Update)
   ]
   where
-    subCommand :: String -> String -> Parser a -> Mod CommandFields a
+    subCommand :: String -> Doc -> Parser a -> Mod CommandFields a
     subCommand label description parser =
-      O.command label (info (parser <**> helper) (O.progDesc description))
+      O.command label (O.info (parser <**> helper) (O.progDescDoc $ Just description))
 
 jengaConfigP :: Parser JengaConfig
 jengaConfigP =

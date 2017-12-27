@@ -74,6 +74,7 @@ executable jenga
   main-is:              jenga.hs
 
   build-depends:        base
+                      , ansi-wl-pprint          == 0.6.*
                       , containers
                       , directory
                       , extra
