@@ -1,0 +1,12 @@
+resolver: lts-9.1
+
+extra-deps:
+ - directory-1.3.1.0
+
+packages:
+ - '.'
+
+ - location:
+     git: https://github.com/erikd/wide-word
+     commit: 8c3bd977856a0055abba8c78ad702bbe9a124154
+   extra-dep: true
