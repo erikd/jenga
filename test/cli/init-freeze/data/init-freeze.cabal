@@ -1,0 +1,32 @@
+name:                init-freeze
+version:             0.0.0
+synopsis:            A test project for jenga
+
+description:         The combination of a simple cabal file and a stack.yaml file,
+                     but jenga is supposed to generate a 'cabal.config' file instead
+                     of a mafia lock file.
+
+license:             MIT
+license-file:        LICENSE
+author:              Erik de Castro Lopo
+maintainer:          erikd@mega-nerd.com
+category:            Test
+build-type:          Simple
+cabal-version:       >= 1.10
+
+library
+  ghc-options:         -Wall -fwarn-tabs
+  default-language:    Haskell2010
+  hs-source-dirs:      src
+
+  exposed-modules:     Test.Jenga.Init.Freeze
+
+  build-depends:       base
+                     , binary
+                     , bytestring
+                     , containers
+                     , directory
+                     , exceptions
+                     , extra
+                     , filepath
+                     , time

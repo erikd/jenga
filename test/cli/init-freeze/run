@@ -1,0 +1,35 @@
+#!/bin/sh -eu
+
+. $(dirname $0)/../core/runner
+
+testname="init-freeze"
+
+banner "${testname}"
+#----------
+
+INPUT_DIR=$(dirname $0)/data
+OUTPUT_DIR=${TEST}
+EXPECTED_DIR=$(dirname $0)/expected
+
+mkdir -p $(dirname ${OUTPUT_DIR})
+
+cp -f ${INPUT_DIR}/* ${OUTPUT_DIR}
+
+(cd ${OUTPUT_DIR} && \
+  git init && \
+  git add stack.yaml ${testname}.cabal && \
+  git commit -m "Initial commit" -- . && \
+  ${JENGA} init --cabal-freeze )
+
+assert_file_exists ${OUTPUT_DIR}/cabal.config
+assert_file_exists ${OUTPUT_DIR}/lib/wide-word/wide-word.cabal
+
+error=0
+diff -q ${OUTPUT_DIR}/cabal.config ${EXPECTED_DIR}/cabal.config || error=1
+
+if test "${error}" = "0"; then
+	pass_test
+else
+    ${DIFF} ${EXPECTED_DIR}/cabal.config ${OUTPUT_DIR}/cabal.config || exit 0
+	fail_test
+fi
