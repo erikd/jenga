@@ -1,11 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Jenga.IO
   ( listDirectoryRecursive
+  , listFiles
   ) where
 
-import           System.Directory (doesDirectoryExist, listDirectory)
+import           Control.Monad (filterM)
+
+import           System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import           System.FilePath ((</>))
 
+import           System.IO.Error (tryIOError)
 
 listDirectoryRecursive :: FilePath -> IO [FilePath]
 listDirectoryRecursive path = do
@@ -19,3 +23,10 @@ listDirectoryRecursive path = do
       if isDir
          then listDirectoryRecursive entry
          else pure []
+
+listFiles :: FilePath -> IO [FilePath]
+listFiles dir = do
+  xs <- either (const []) id <$> tryIOError (listDirectory dir)
+  filterM doesFileExist $ fmap (dir </>) xs
+
+

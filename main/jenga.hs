@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import           Control.Monad (forM_)
+import           Control.Monad (forM_, unless)
 import           Control.Monad.Extra (concatMapM)
 
 import           Data.Either (partitionEithers)
@@ -18,6 +18,7 @@ import           Options.Applicative
                         , help, helper, info, long, metavar, short, strOption)
 import qualified Options.Applicative as O
 
+import           System.Exit (exitFailure)
 import           System.FilePath ((</>), takeDirectory)
 import           System.IO (stderr)
 
@@ -127,6 +128,7 @@ update = do
 
 runSetup :: StackConfig -> JengaConfig -> IO ()
 runSetup stackCfg (JengaConfig modsDir lockFormat dropDeps) = do
+  checkModulesDirPath modsDir
   cfiles <- findProjectCabalFiles (StackFilePath "stack.yaml") modsDir
   setupGitSubmodules modsDir $ stackGitLocations stackCfg
   deps <- DL.nub . fmap dependencyName <$> concatMapM readPackageDependencies cfiles
@@ -138,6 +140,13 @@ runSetup stackCfg (JengaConfig modsDir lockFormat dropDeps) = do
     writeLockFile (toLockPath lockFormat cabalpath $ ghcVersion plist) pkgs
 
 -- -----------------------------------------------------------------------------
+
+checkModulesDirPath :: ModulesDirPath -> IO ()
+checkModulesDirPath (ModulesDirPath modsDir) = do
+  noFiles <- DL.null <$> listFiles modsDir
+  unless noFiles $ do
+    T.hPutStrLn stderr $ "Found files in submodules directory '" <> T.pack modsDir <> "' which should only have other directories."
+    exitFailure
 
 findProjectCabalFiles :: StackFilePath -> ModulesDirPath -> IO [CabalFilePath]
 findProjectCabalFiles (StackFilePath stackFile) (ModulesDirPath modsDir) =
