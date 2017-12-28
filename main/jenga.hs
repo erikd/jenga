@@ -3,6 +3,8 @@
 import           Control.Monad (forM_, unless)
 import           Control.Monad.Extra (concatMapM)
 
+import           Data.Aeson.Encode.Pretty (encodePretty', defConfig)
+import qualified Data.ByteString.Lazy.Char8 as LBS
 import           Data.Either (partitionEithers)
 import qualified Data.List as DL
 import           Data.Maybe (fromMaybe)
@@ -19,8 +21,8 @@ import           Options.Applicative
 import qualified Options.Applicative as O
 
 import           System.Exit (exitFailure)
-import           System.FilePath ((</>), takeDirectory)
-import           System.IO (stderr)
+import           System.FilePath ((</>), takeDirectory, takeFileName)
+import           System.IO (hPutStrLn, stderr)
 
 import           Text.PrettyPrint.ANSI.Leijen (Doc)
 
@@ -40,6 +42,7 @@ main =
 data Command
   = Initialize JengaConfig
   | Update
+  | Parse StackFilePath
 
 
 pCommand :: Parser Command
@@ -58,6 +61,10 @@ pCommand = O.subparser $ mconcat
       <> "or other things) and want to build is the new updated project. This sub command"
       <> "expects a '.jenga' file in the same directory as the 'stack.yaml' file.")
       (pure Update)
+  , subCommand "parse"
+      ( "Parse the 'stack.yaml' file and dump out the relevant bits as JSON. This is "
+      <> "mostly useful for testing and debugging.")
+      (Parse <$> stackFilePathP)
   ]
   where
     subCommand :: String -> Doc -> Parser a -> Mod CommandFields a
@@ -93,6 +100,15 @@ lockFormatP =  O.flag MafiaLock CabalFreeze
   <> help "Generate cabal freeze file (cabal.config) instead of mafia lock file."
   )
 
+stackFilePathP :: Parser StackFilePath
+stackFilePathP =
+  fmap (StackFilePath . fromMaybe "stack.yaml") <$> O.optional $ strOption
+  (  short 's'
+  <> long "stack-file"
+  <> metavar "STACK_FILE"
+  <> help "The 'stack.yaml' file. (defaults to './stack.yaml')."
+  )
+
 -- -----------------------------------------------------------------------------
 
 commandHandler :: Command -> IO ()
@@ -100,6 +116,7 @@ commandHandler cmd =
   case cmd of
     Initialize cfg -> initialize cfg
     Update -> update
+    Parse scfg -> dumpStackToJSON scfg
 
 initialize :: JengaConfig -> IO ()
 initialize jcfg = do
@@ -140,6 +157,15 @@ runSetup stackCfg (JengaConfig modsDir lockFormat dropDeps) = do
   T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
   forM_ cfiles $ \ cabalpath -> do
     writeLockFile (toLockPath lockFormat cabalpath $ ghcVersion plist) pkgs
+
+dumpStackToJSON :: StackFilePath -> IO ()
+dumpStackToJSON stackFile = do
+  escfg <- readStackConfig stackFile
+  case escfg of
+    Right scfg -> LBS.putStrLn $ encodePretty' defConfig scfg
+    Left err -> do
+      hPutStrLn stderr $ takeFileName (unstackFilePath stackFile) ++ ": " ++ show err
+      exitFailure
 
 -- -----------------------------------------------------------------------------
 
