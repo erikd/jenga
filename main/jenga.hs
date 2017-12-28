@@ -132,7 +132,7 @@ runSetup :: StackConfig -> JengaConfig -> IO ()
 runSetup stackCfg (JengaConfig modsDir lockFormat dropDeps) = do
   checkModulesDirPath modsDir
   cfiles <- findProjectCabalFiles (StackFilePath "stack.yaml") modsDir
-  setupGitSubmodules modsDir $ stackGitLocations stackCfg
+  setupGitSubmodules modsDir $ stackGitRepos stackCfg
   deps <- DL.nub . fmap dependencyName <$> concatMapM readPackageDependencies cfiles
   plist <- processResolver stackCfg
   subMods <- findSubmodules

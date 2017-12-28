@@ -5,6 +5,7 @@ module Jenga.Types
   , LockFormat (..)
   , Package (..)
   , readVersion
+  , showVersion
 
   -- Re-export these from the Cabal library.
   , Version
@@ -16,7 +17,7 @@ import qualified Data.List as DL
 import           Data.Text (Text)
 import qualified Data.Text as T
 
-import           Distribution.Version (Version, mkVersion, versionNumbers)
+import           Distribution.Version (Version, mkVersion, showVersion, versionNumbers)
 
 data LockFormat
   = MafiaLock

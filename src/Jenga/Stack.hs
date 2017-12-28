@@ -1,16 +1,18 @@
 {-# LANGUAGE OverloadedStrings #-}
-
 module Jenga.Stack
-  ( StackConfig (..)
+  ( StackLocalDir (..)
+  , StackConfig (..)
   , StackExtraDep (..)
   , StackFilePath (..)
   , StackGitRepo (..)
   , readStackConfig
   ) where
 
+import           Control.Applicative (optional)
 import           Control.Monad.Extra (mapMaybeM)
 
-import           Data.Aeson (FromJSON (..), Value (..), (.:))
+import           Data.Aeson (FromJSON (..), ToJSON (..), Value (..), (.:), (.:?), (.=))
+import qualified Data.Aeson as Aeson
 import           Data.Aeson.Types (typeMismatch)
 
 import qualified Data.ByteString.Char8 as BS
@@ -27,54 +29,55 @@ import qualified Data.Yaml as Y
 import           Jenga.Types
 
 
-newtype StackFilePath = StackFilePath FilePath
+newtype StackFilePath
+  = StackFilePath { unstackFilePath :: FilePath }
 
 data StackConfig = StackConfig
   { stackResolver :: !Text
   , stackExtraDeps :: ![StackExtraDep]
-  , stackGitLocations :: ![StackGitRepo]
+  , stackLocalDirs :: ![StackLocalDir]
+  , stackGitRepos :: ![StackGitRepo]
   }
   deriving (Eq, Show)
 
 instance FromJSON StackConfig where
-  parseJSON (Object o) = StackConfig
-        <$> o .: "resolver"
-        <*> o .: "extra-deps"
-        <*> ((o .: "packages") >>= parseStackGitRepos)
+  parseJSON (Object o) =
+    StackConfig
+      <$> o .: "resolver"
+      <*> ((o .:? "extra-deps") >>= maybe (pure []) (parseArray "StackExtraDep" parseJSON))
+      -- The objects in the "packages" can be two different types, so we have
+      -- to futz around quite a bit.
+      <*> ((o .:? "packages") >>= maybe (pure []) (parseMaybeArray "StackLocalDir" parseMaybeStackLocalDir))
+      <*> ((o .:? "packages") >>= maybe (pure []) (parseMaybeArray "StackGitRepo" parseMaybeStackGitRepo))
 
   parseJSON invalid = typeMismatch "StackConfig" invalid
 
-parseStackGitRepos :: Value -> Parser [StackGitRepo]
-parseStackGitRepos v =
-  case v of
-    Array a -> mapMaybeM parseMaybe $ V.toList a
-    invalid -> typeMismatch "StackConfig" invalid
-  where
-    parseMaybe :: Value -> Parser (Maybe StackGitRepo)
-    parseMaybe (Object o) =
-      fmap Just $
-        (o .: "location") >>= \p ->
-          StackGitRepo
-            <$> p .: "git"
-            <*> p .: "commit"
-    parseMaybe _ = pure Nothing
+instance ToJSON StackConfig where
+  toJSON cfg =
+    Aeson.object
+      [ "resolver" .= stackResolver cfg
+      , "extra-deps" .= stackExtraDeps cfg
+      , "packages" .= (fmap toJSON (stackLocalDirs cfg) ++ fmap toJSON (stackGitRepos cfg))
+      ]
 
+parseArray :: String -> (Value -> Parser a) -> Value -> Parser [a]
+parseArray name parser v =
+  case v of
+    Null -> pure []
+    Array a -> mapM parser $ V.toList a
+    invalid -> typeMismatch name invalid
+
+parseMaybeArray :: String -> (Value -> Parser (Maybe a)) -> Value -> Parser [a]
+parseMaybeArray name parser v =
+  case v of
+    Null -> pure []
+    Array a -> mapMaybeM parser $ V.toList a
+    invalid -> typeMismatch name invalid
 
 data StackExtraDep = StackExtraDep
   { sedName :: !Text
   , sedVersion :: !Version
   } deriving (Eq, Show)
-
-data StackGitRepo = StackGitRepo
-  { sgrUrl :: !Text
-  , sgrCommit :: !Text
-  } deriving (Eq, Show)
-
-instance FromJSON StackGitRepo where
-  parseJSON (Object o) = StackGitRepo
-        <$> o .: "git"
-        <*> o .: "commit"
-  parseJSON invalid = typeMismatch "StackGitRepo" invalid
 
 instance FromJSON StackExtraDep where
   parseJSON (String s) = parseStackExtraDep s
@@ -88,6 +91,57 @@ parseStackExtraDep str = do
   if DL.length xs >= 2
     then pure $ StackExtraDep (T.intercalate "-" $ init xs) (readVersion $ last xs)
     else fail $ "Can't find version number in extra-dep : " <> T.unpack str
+
+instance ToJSON StackExtraDep where
+  toJSON sed =
+    Aeson.String $ sedName sed <> "-" <> T.pack (showVersion $ sedVersion sed)
+
+
+data StackGitRepo = StackGitRepo
+  { sgrUrl :: !Text
+  , sgrCommit :: !Text
+  } deriving (Eq, Show)
+
+instance FromJSON StackGitRepo where
+  parseJSON (Object o) = StackGitRepo
+        <$> o .: "git"
+        <*> o .: "commit"
+  parseJSON invalid = typeMismatch "StackGitRepo" invalid
+
+instance ToJSON StackGitRepo where
+  toJSON sgr =
+    Aeson.object
+      [ "git" .= sgrUrl sgr
+      , "commit" .= sgrCommit sgr
+      ]
+
+parseMaybeStackGitRepo :: Value -> Parser (Maybe StackGitRepo)
+parseMaybeStackGitRepo v =
+  case v of
+    Object o ->
+      (o .: "location") >>= \ p ->
+        case p of
+          Object q -> Just <$> (StackGitRepo <$> q .: "git" <*> q .: "commit")
+          _ -> pure Nothing
+    _ -> pure Nothing
+
+
+newtype StackLocalDir
+  = StackLocalDir Text
+  deriving (Eq, Show)
+
+instance FromJSON StackLocalDir where
+  parseJSON (Object o) =
+    StackLocalDir <$> (o .: "location")
+  parseJSON invalid = typeMismatch "StackLocalDir" invalid
+
+instance ToJSON StackLocalDir where
+  toJSON (StackLocalDir s) = String s
+
+parseMaybeStackLocalDir :: Value -> Parser (Maybe StackLocalDir)
+parseMaybeStackLocalDir =
+  optional . parseJSON
+
 
 readStackConfig :: StackFilePath -> IO (Either ParseException StackConfig)
 readStackConfig (StackFilePath stackYamlFile) =
