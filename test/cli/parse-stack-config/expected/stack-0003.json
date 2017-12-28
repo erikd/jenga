@@ -1,0 +1,7 @@
+{
+    "packages": [
+        "wibble"
+    ],
+    "extra-deps": [],
+    "resolver": "lts-9.0"
+}

@@ -1,0 +1,9 @@
+resolver: lts-9.0
+flags: {}
+extra-deps: []
+extra-package-dbs: []
+
+packages:
+  - '.'
+nix:
+  packages: [gmp,git]

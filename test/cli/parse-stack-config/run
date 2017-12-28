@@ -1,0 +1,40 @@
+#!/bin/sh -eu
+
+. $(dirname $0)/../core/runner
+
+PARSER="${JENGA} parse --stack-file"
+
+testname="parse-stack-config"
+
+banner "${testname}"
+#----------
+
+INPUT_DIR=$(dirname $0)/data
+OUTPUT_DIR=${TEST}
+EXPECTED_DIR=$(dirname $0)/expected
+
+mkdir -p $(dirname ${OUTPUT_DIR})
+
+error_count=0
+
+for input in ${INPUT_DIR}/* ; do
+  outname=$(basename $input | sed 's/\.yaml$/\.json/')
+  output=${OUTPUT_DIR}/${outname}
+  expected=${EXPECTED_DIR}/${outname}
+  ${PARSER} ${input} > ${output}
+  if ! test -f ${expected} ; then
+    cp ${output} ${expected}
+    fi
+  error=0
+  diff -q ${expected} ${output} || error=1
+  if test "${error}" = "1"; then
+    echo "Error in file:" ${input}
+    ${DIFF} ${expected} ${output}
+    fi
+  done
+
+if test "${error_count}" = "0"; then
+	pass_test
+else
+	fail_test
+fi
