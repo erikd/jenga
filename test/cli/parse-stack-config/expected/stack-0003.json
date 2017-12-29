@@ -1,6 +1,8 @@
 {
     "packages": [
-        "wibble"
+        {
+            "location": "wibble"
+        }
     ],
     "extra-deps": [],
     "resolver": "lts-9.0"

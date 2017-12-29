@@ -1,12 +1,16 @@
 {
     "packages": [
         {
-            "git": "https://github.com/well-typed/cborg",
-            "commit": "c7db82bfd93923f5b08ed51a4cd53e30bd445924"
+            "location": {
+                "git": "https://github.com/well-typed/cborg",
+                "commit": "c7db82bfd93923f5b08ed51a4cd53e30bd445924"
+            }
         },
         {
-            "git": "https://github.com/thoughtpolice/hs-ed25519",
-            "commit": "da4247b5b3420120e20451e6a252e2a2ca15b43c"
+            "location": {
+                "git": "https://github.com/thoughtpolice/hs-ed25519",
+                "commit": "da4247b5b3420120e20451e6a252e2a2ca15b43c"
+            }
         }
     ],
     "extra-deps": [
