@@ -29,6 +29,7 @@ library
 
   build-depends:        base                    >= 4.8            && < 5
                       , aeson                   == 1.1.*
+                      , aeson-pretty            == 0.8.*
                       , async                   == 2.1.*
                       , bytestring              == 0.10.*
                       , Cabal                   == 2.0.*
@@ -74,9 +75,8 @@ executable jenga
   main-is:              jenga.hs
 
   build-depends:        base
-                      , aeson-pretty            == 0.8.*
                       , ansi-wl-pprint          == 0.6.*
-                      , bytestring              == 0.10.*
+                      , bytestring
                       , containers
                       , directory
                       , extra

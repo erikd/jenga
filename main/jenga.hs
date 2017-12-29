@@ -3,8 +3,7 @@
 import           Control.Monad (forM_, unless)
 import           Control.Monad.Extra (concatMapM)
 
-import           Data.Aeson.Encode.Pretty (encodePretty', defConfig)
-import qualified Data.ByteString.Lazy.Char8 as LBS
+import qualified Data.ByteString.Char8 as BS
 import           Data.Either (partitionEithers)
 import qualified Data.List as DL
 import           Data.Maybe (fromMaybe)
@@ -162,7 +161,7 @@ dumpStackToJSON :: StackFilePath -> IO ()
 dumpStackToJSON stackFile = do
   escfg <- readStackConfig stackFile
   case escfg of
-    Right scfg -> LBS.putStrLn $ encodePretty' defConfig scfg
+    Right scfg -> BS.putStrLn $ renderStackConfig scfg
     Left err -> do
       hPutStrLn stderr $ takeFileName (unstackFilePath stackFile) ++ ": " ++ show err
       exitFailure

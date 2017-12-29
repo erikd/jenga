@@ -5,7 +5,9 @@ module Jenga.Stack
   , StackExtraDep (..)
   , StackFilePath (..)
   , StackGitRepo (..)
+  , parseStackConfig
   , readStackConfig
+  , renderStackConfig
   ) where
 
 import           Control.Applicative (optional)
@@ -13,9 +15,12 @@ import           Control.Monad.Extra (mapMaybeM)
 
 import           Data.Aeson (FromJSON (..), ToJSON (..), Value (..), (.:), (.:?), (.=))
 import qualified Data.Aeson as Aeson
+import           Data.Aeson.Encode.Pretty (encodePretty', defConfig)
 import           Data.Aeson.Types (typeMismatch)
 
+import           Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.Lazy.Char8 as LBS
 
 import qualified Data.List as DL
 import           Data.Monoid ((<>))
@@ -23,7 +28,7 @@ import           Data.Monoid ((<>))
 import           Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Vector as V
-import           Data.Yaml (ParseException, Parser)
+import           Data.Yaml (Parser)
 import qualified Data.Yaml as Y
 
 import           Jenga.Types
@@ -111,8 +116,11 @@ instance FromJSON StackGitRepo where
 instance ToJSON StackGitRepo where
   toJSON sgr =
     Aeson.object
-      [ "git" .= sgrUrl sgr
-      , "commit" .= sgrCommit sgr
+      [ "location" .=
+          Aeson.object
+            [ "git" .= sgrUrl sgr
+            , "commit" .= sgrCommit sgr
+            ]
       ]
 
 parseMaybeStackGitRepo :: Value -> Parser (Maybe StackGitRepo)
@@ -136,13 +144,24 @@ instance FromJSON StackLocalDir where
   parseJSON invalid = typeMismatch "StackLocalDir" invalid
 
 instance ToJSON StackLocalDir where
-  toJSON (StackLocalDir s) = String s
+  toJSON (StackLocalDir s) =
+    Aeson.object [ "location" .= String s ]
 
 parseMaybeStackLocalDir :: Value -> Parser (Maybe StackLocalDir)
 parseMaybeStackLocalDir =
   optional . parseJSON
 
 
-readStackConfig :: StackFilePath -> IO (Either ParseException StackConfig)
+parseStackConfig :: ByteString -> Either JengaError StackConfig
+parseStackConfig bs =
+  case Y.decodeEither bs of
+    Right cfg -> Right cfg
+    Left s -> Left $ JengaStackError (T.pack s)
+
+readStackConfig :: StackFilePath -> IO (Either JengaError StackConfig)
 readStackConfig (StackFilePath stackYamlFile) =
-  Y.decodeEither' <$> BS.readFile stackYamlFile
+  parseStackConfig <$> BS.readFile stackYamlFile
+
+renderStackConfig :: StackConfig -> ByteString
+renderStackConfig =
+  LBS.toStrict . encodePretty' defConfig

@@ -38,4 +38,5 @@ readVersion =
 data JengaError
   = JengaConfigMissing
   | JengaConfigError !Text
+  | JengaStackError !Text
   deriving (Eq, Show)
