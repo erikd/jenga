@@ -223,7 +223,7 @@ installInterruptHandler pgid = do
 
 
 class ProcessResult a where
-  callProcess :: (Functor m, MonadIO m, MonadCatch m)
+  callProcess :: (MonadIO m, MonadCatch m)
               => Process -> EitherT ProcessError m a
 
 instance ProcessResult Pass where
@@ -344,7 +344,7 @@ instance ProcessResult (OutErrCode Text) where
 
 -- | Call a command with arguments.
 --
-call :: (ProcessResult a, Functor m, MonadIO m, MonadCatch m)
+call :: (ProcessResult a, MonadIO m, MonadCatch m)
      => (ProcessError -> e)
      -> File
      -> [Argument]
@@ -359,7 +359,7 @@ call up cmd args = firstEitherT up (callProcess process)
 
 -- | Call a command with arguments, passing the output through to stdout/stderr.
 --
-call_ :: (Functor m, MonadIO m, MonadCatch m)
+call_ :: (MonadIO m, MonadCatch m)
       => (ProcessError -> e)
       -> File
       -> [Argument]
@@ -371,7 +371,7 @@ call_ up cmd args = do
 
 -- | Call a command with arguments from inside a working directory.
 --
-callFrom :: (ProcessResult a, Functor m, MonadIO m, MonadCatch m)
+callFrom :: (ProcessResult a, MonadIO m, MonadCatch m)
          => (ProcessError -> e)
          -> Directory
          -> File
@@ -387,7 +387,7 @@ callFrom up dir cmd args = firstEitherT up (callProcess process)
 
 -- | Call a command with arguments from inside a working directory.
 --
-callFrom_ :: (Functor m, MonadIO m, MonadCatch m)
+callFrom_ :: (MonadIO m, MonadCatch m)
           => (ProcessError -> e)
           -> Directory
           -> File
@@ -427,7 +427,7 @@ execProcess p = handleIO p $ do
 
 -- | Execute a command with arguments, this call never returns.
 --
-exec :: (Functor m, MonadIO m, MonadCatch m)
+exec :: (MonadIO m, MonadCatch m)
      => (ProcessError -> e)
      -> File
      -> [Argument]
@@ -442,7 +442,7 @@ exec up cmd args = firstEitherT up (execProcess process)
 
 -- | Execute a command with arguments, this call never returns.
 --
-execFrom :: (Functor m, MonadIO m, MonadCatch m)
+execFrom :: (MonadIO m, MonadCatch m)
          => (ProcessError -> e)
          -> Directory
          -> File
@@ -506,7 +506,7 @@ handleIO p =
   let fromIO = toException :: IOException -> SomeException
   in handle (hoistEither . Left . ProcessException p . fromIO)
 
-waitCatchE :: (Functor m, MonadIO m) => Process -> Async a -> EitherT ProcessError m a
+waitCatchE :: MonadIO m => Process -> Async a -> EitherT ProcessError m a
 waitCatchE p = firstEitherT (ProcessException p) . newEitherT . liftIO . waitCatch
 
 ------------------------------------------------------------------------

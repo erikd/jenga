@@ -41,7 +41,7 @@ buildSubmoduleDir (ModulesDirPath smp) gitrepo =
         ["",  _, name] -> smp </> dropExtension name
         xs -> error $ "buildSubmoduleDir: Bad git repo user/project: " ++ show xs
 
-split :: Eq a => (a -> Bool) -> [a] -> [[a]]
+split :: (a -> Bool) -> [a] -> [[a]]
 split p =
   splitter
   where
