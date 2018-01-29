@@ -18,7 +18,7 @@ data JengaError
 
 gitAddSubmodule :: FilePath -> String -> IO ()
 gitAddSubmodule dest repo =
-  git ["submodule", "add", repo, dest]
+  git ["submodule", "add", "--force", repo, dest]
 
 gitCheckoutCommit :: String -> IO ()
 gitCheckoutCommit hash =
