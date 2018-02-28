@@ -1,13 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Jenga.Stack
-  ( StackLocalDir (..)
-  , StackConfig (..)
+  ( ConfigExtraDep (..)
+  , StackLocalDir (..)
+  , StackConfig
   , StackExtraDep (..)
   , StackFilePath (..)
   , StackGitRepo (..)
+  , mkStackConfig
   , parseStackConfig
   , readStackConfig
   , renderStackConfig
+  , stackExtraDeps
+  , stackGitRepos
+  , stackLocalDirs
+  , stackResolver
   ) where
 
 import           Control.Applicative (optional)
@@ -21,7 +27,6 @@ import           Data.Aeson.Types (typeMismatch)
 import           Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
-
 import qualified Data.List as DL
 import           Data.Monoid ((<>))
 
@@ -37,13 +42,43 @@ import           Jenga.Types
 newtype StackFilePath
   = StackFilePath { unstackFilePath :: FilePath }
 
+-- | StackConfig needs to be an opaque type because git repos (with hashes) can
+-- be listed in either the 'extra-deps` field of the 'locations' field (which
+-- ends up in `cfgGitRepos`. To keep round trip testing of the parser working
+-- we keep `cfgExtraDeps` separate and then provide accessors below that can
+-- correctly separate the components.
 data StackConfig = StackConfig
-  { stackResolver :: !Text
-  , stackExtraDeps :: ![StackExtraDep]
-  , stackLocalDirs :: ![StackLocalDir]
-  , stackGitRepos :: ![StackGitRepo]
+  { cfgResolver :: !Text
+  , cfgExtraDeps :: ![ConfigExtraDep]
+  , cfgLocalDirs :: ![StackLocalDir]
+  , cfgGitRepos :: ![StackGitRepo]
   }
   deriving (Eq, Show)
+
+-- | The public StackConfig constructor. Destructors are not provided except
+-- via the accessors below.
+mkStackConfig :: Text -> [ConfigExtraDep] -> [StackLocalDir] -> [StackGitRepo] -> StackConfig
+mkStackConfig = StackConfig
+
+stackResolver :: StackConfig -> Text
+stackResolver = cfgResolver
+
+-- | Return only the 'extra-deps' package names and versions from the config.
+stackExtraDeps :: StackConfig -> [StackExtraDep]
+stackExtraDeps cfg =
+  [ dep | ConfigExtraDep dep <- cfgExtraDeps cfg ]
+
+stackLocalDirs :: StackConfig -> [StackLocalDir]
+stackLocalDirs = cfgLocalDirs
+
+-- | Return all git repos (with their hashes) from the config, regardless of
+-- whether the git repo was listed on 'extra-deps' or 'locations'.
+stackGitRepos :: StackConfig -> [StackGitRepo]
+stackGitRepos cfg =
+  cfgGitRepos cfg
+    ++ [ r | ConfigExtraDepRepo r <- cfgExtraDeps cfg ]
+
+-- -----------------------------------------------------------------------------
 
 instance FromJSON StackConfig where
   parseJSON (Object o) =
@@ -60,9 +95,9 @@ instance FromJSON StackConfig where
 instance ToJSON StackConfig where
   toJSON cfg =
     Aeson.object
-      [ "resolver" .= stackResolver cfg
-      , "extra-deps" .= stackExtraDeps cfg
-      , "packages" .= (fmap toJSON (stackLocalDirs cfg) ++ fmap toJSON (stackGitRepos cfg))
+      [ "resolver" .= cfgResolver cfg
+      , "extra-deps" .= cfgExtraDeps cfg
+      , "packages" .= (fmap toJSON (cfgLocalDirs cfg) ++ fmap toJSON (cfgGitRepos cfg))
       ]
 
 parseArray :: String -> (Value -> Parser a) -> Value -> Parser [a]
@@ -79,13 +114,19 @@ parseMaybeArray name parser v =
     Array a -> mapMaybeM parser $ V.toList a
     invalid -> typeMismatch name invalid
 
-data StackExtraDep = StackExtraDep
-  { sedName :: !Text
-  , sedVersion :: !Version
-  } deriving (Eq, Show)
+data ConfigExtraDep
+  = ConfigExtraDep !StackExtraDep
+  | ConfigExtraDepRepo !StackGitRepo
+  deriving (Eq, Show)
 
-instance FromJSON StackExtraDep where
-  parseJSON (String s) = parseStackExtraDep s
+data StackExtraDep
+  = StackExtraDep !Text !Version
+  deriving (Eq, Show)
+
+instance FromJSON ConfigExtraDep where
+  parseJSON (String s) = ConfigExtraDep <$> parseStackExtraDep s
+  parseJSON (Object o) = ConfigExtraDepRepo <$> (StackGitRepo <$> o .: "git" <*> o .: "commit")
+
   parseJSON invalid = typeMismatch "StackExtraDep" invalid
 
 parseStackExtraDep :: Text -> Parser StackExtraDep
@@ -97,10 +138,14 @@ parseStackExtraDep str = do
     then pure $ StackExtraDep (T.intercalate "-" $ init xs) (readVersion $ last xs)
     else fail $ "Can't find version number in extra-dep : " <> T.unpack str
 
-instance ToJSON StackExtraDep where
-  toJSON sed =
-    Aeson.String $ sedName sed <> "-" <> T.pack (showVersion $ sedVersion sed)
-
+instance ToJSON ConfigExtraDep where
+  toJSON (ConfigExtraDep (StackExtraDep name version)) =
+    Aeson.String $ name <> "-" <> T.pack (showVersion version)
+  toJSON (ConfigExtraDepRepo sgr) =
+    Aeson.object
+      [ "git" .= sgrUrl sgr
+      , "commit" .= sgrCommit sgr
+      ]
 
 data StackGitRepo = StackGitRepo
   { sgrUrl :: !Text
@@ -151,6 +196,7 @@ parseMaybeStackLocalDir :: Value -> Parser (Maybe StackLocalDir)
 parseMaybeStackLocalDir =
   optional . parseJSON
 
+-- -----------------------------------------------------------------------------
 
 parseStackConfig :: ByteString -> Either JengaError StackConfig
 parseStackConfig bs =

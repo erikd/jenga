@@ -32,8 +32,9 @@ mergePackages pkgs deps submods dropDeps =
   in DL.map (uncurry Package) $ DM.toList pkgMap3
   where
     insertExtraDep :: Map Text Version -> StackExtraDep -> Map Text Version
-    insertExtraDep pmap dep =
-      DM.insert (sedName dep) (sedVersion dep) pmap
+    insertExtraDep pmap sed =
+      case sed of
+        StackExtraDep name version -> DM.insert name version pmap
 
     insertPackage :: Map Text Version -> Package -> Map Text Version
     insertPackage pmap pkg =

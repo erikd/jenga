@@ -41,7 +41,10 @@ genResolver =
 
 genStackExtraDep :: Gen StackExtraDep
 genStackExtraDep =
-  StackExtraDep <$> genPackageName <*> genPackageVersion
+  Gen.choice
+    [ StackExtraDep <$> genPackageName <*> genPackageVersion
+    , StackExtraDepRepo <$> genStackGitRepo
+    ]
 
 genStackLocalDir :: Gen StackLocalDir
 genStackLocalDir =
