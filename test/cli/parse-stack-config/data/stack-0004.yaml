@@ -1,0 +1,8 @@
+resolver: lts-9.0
+
+extra-deps:
+- transformers-0.5.5.0
+- concurrent-extra-0.7.0.10
+- { git: "https://github.com/primetype/inspector"
+  , commit: "674c5d3a4733088f14164b0924824b7433e06428"
+  }

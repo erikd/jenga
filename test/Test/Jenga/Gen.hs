@@ -28,7 +28,7 @@ genJengaConfig =
 
 genStackConfig :: Gen StackConfig
 genStackConfig =
-  StackConfig
+  mkStackConfig
     <$> genResolver
     <*> Gen.list (Range.linear 0 5) genStackExtraDep
     <*> Gen.list (Range.linear 0 5) genStackLocalDir
@@ -39,11 +39,11 @@ genResolver :: Gen Text
 genResolver =
   T.pack . DL.take 4 . show . (`div` 100) <$> Gen.int (Range.linear 100 9999)
 
-genStackExtraDep :: Gen StackExtraDep
+genStackExtraDep :: Gen ConfigExtraDep
 genStackExtraDep =
   Gen.choice
-    [ StackExtraDep <$> genPackageName <*> genPackageVersion
-    , StackExtraDepRepo <$> genStackGitRepo
+    [ ConfigExtraDep <$> (StackExtraDep <$> genPackageName <*> genPackageVersion)
+    , ConfigExtraDepRepo <$> genStackGitRepo
     ]
 
 genStackLocalDir :: Gen StackLocalDir

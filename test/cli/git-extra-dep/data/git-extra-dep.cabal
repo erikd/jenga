@@ -1,0 +1,34 @@
+name:                git-extra-dep
+version:             0.0.0
+synopsis:            A test project for jenga
+
+description:         The simple combination of a cabal file and a stack.yaml
+                     file with the stack.yaml file specifying a git repo and
+                     a git commit as an extra dependency.
+
+license:             MIT
+license-file:        LICENSE
+author:              Erik de Castro Lopo
+maintainer:          erikd@mega-nerd.com
+category:            Test
+build-type:          Simple
+cabal-version:       >= 1.10
+
+library
+  ghc-options:         -Wall -fwarn-tabs
+  default-language:    Haskell2010
+  hs-source-dirs:      src
+
+  exposed-modules:     Test.Jenga.GitExtraDep
+
+  build-depends:       base
+                     , binary
+                     , bytestring
+                     , containers
+                     , directory
+                     , exceptions
+                     , extra
+                     , filepath
+                     , time
+                     , transformers
+                     , wide-word

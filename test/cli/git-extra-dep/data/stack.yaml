@@ -1,0 +1,10 @@
+resolver: lts-8.12
+
+extra-deps:
+ - transformers-0.5.5.0
+ - { git: "https://github.com/erikd/wide-word"
+   , commit: "354f9decd7019c026080820d2b120bf1b7c5f296"
+   }
+
+packages:
+ - '.'

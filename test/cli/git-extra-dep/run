@@ -2,7 +2,7 @@
 
 . $(dirname $0)/../core/runner
 
-testname="update"
+testname="git-extra-dep"
 
 banner "${testname}"
 #----------
@@ -14,29 +14,12 @@ EXPECTED_DIR=$(dirname $0)/expected
 mkdir -p $(dirname ${OUTPUT_DIR})
 
 cp -f ${INPUT_DIR}/* ${OUTPUT_DIR}
-rm -f ${OUTPUT_DIR}/stack*.yaml
-cp -f ${INPUT_DIR}/stack-7.0.yaml ${OUTPUT_DIR}/stack.yaml
 
 (cd ${OUTPUT_DIR} && \
   git init && \
   git add stack.yaml ${testname}.cabal && \
   git commit -m "Initial commit" -- . && \
   ${JENGA} init )
-
-(cd ${OUTPUT_DIR} && \
-  git commit -m "Add submodules" -- . && \
-  ${JENGA} init )
-
-assert_file_exists ${OUTPUT_DIR}/${testname}.lock-8.0.1
-assert_file_exists ${OUTPUT_DIR}/lib/wide-word/wide-word.cabal
-
-# Update the stack version.
-cp -f ${INPUT_DIR}/stack-9.1.yaml ${OUTPUT_DIR}/stack.yaml
-
-
-(cd ${OUTPUT_DIR} && \
-  git commit -m "Update stack resolver and wide-word" -- . && \
-  ${JENGA} update )
 
 assert_file_exists ${OUTPUT_DIR}/${testname}.lock-8.0.2
 assert_file_exists ${OUTPUT_DIR}/lib/wide-word/wide-word.cabal
@@ -47,6 +30,6 @@ diff -q ${OUTPUT_DIR}/${testname}.lock-8.0.2 ${EXPECTED_DIR}/${testname}.lock-8.
 if test "${error}" = "0"; then
 	pass_test
 else
-    ${DIFF} ${EXPECTED_DIR}/${testname}.lock-8.0.2 ${OUTPUT_DIR}/${testname}.lock-8.0.2 || exit 0
+    diff ${EXPECTED_DIR}/${testname}.lock-8.0.2 ${OUTPUT_DIR}/${testname}.lock-8.0.2 || exit 0
 	fail_test
 fi
