@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Jenga.Cabal
   ( CabalFilePath (..)
   , dependencyName
@@ -6,10 +7,12 @@ module Jenga.Cabal
   , readPackageFromCabalFile
   ) where
 
--- You would thing that since the Cabal file exposes its cabal parser you would
+-- You would think that since the Cabal file exposes its cabal parser you would
 -- think it would be a simple matter to extract the list of dependencies.
 -- Unfortunately its much more work than it should be. See:
 -- https://hackage.haskell.org/package/Cabal-1.24.2.0/docs/Distribution-PackageDescription.html#v:buildDepends
+
+import           Control.Monad.Trans.Either (EitherT, handleIOEitherT)
 
 import qualified Data.Map.Strict as DM
 import           Data.Text (Text)
@@ -34,22 +37,25 @@ import           Jenga.Types
 newtype CabalFilePath = CabalFilePath FilePath
 
 
-readPackageDependencies :: CabalFilePath -> IO [Dependency]
+readPackageDependencies :: CabalFilePath -> EitherT JengaError IO [Dependency]
 readPackageDependencies (CabalFilePath fpath) = do
-  genpkg <- readGenericPackageDescription normal fpath
-  pure
-    $ sortNubByName
-    $ filterPackageName (package $ packageDescription genpkg)
-    $ extractLibraryDeps (condLibrary genpkg)
-        ++ extractExecutableDeps (condExecutables genpkg)
-        ++ extractTestSuiteDeps (condTestSuites genpkg)
-        ++ extractBenchmarkDeps (condBenchmarks genpkg)
+  handleIOEitherT (JengaIOError "readPackageDependencies" fpath) $ do
+    genpkg <- readGenericPackageDescription normal fpath
+    pure
+      . sortNubByName
+      . filterPackageName (package $ packageDescription genpkg)
+      $ extractLibraryDeps (condLibrary genpkg)
+          ++ extractExecutableDeps (condExecutables genpkg)
+          ++ extractTestSuiteDeps (condTestSuites genpkg)
+          ++ extractBenchmarkDeps (condBenchmarks genpkg)
 
 
-readPackageFromCabalFile :: CabalFilePath -> IO Package
-readPackageFromCabalFile (CabalFilePath fpath) = do
-  pkgId <- package . packageDescription <$> readGenericPackageDescription normal fpath
-  pure $ Package (T.pack . unPackageName $ pkgName pkgId) (pkgVersion pkgId)
+readPackageFromCabalFile :: CabalFilePath -> EitherT JengaError IO Package
+readPackageFromCabalFile (CabalFilePath fpath) =
+  handleIOEitherT (JengaIOError "readPackageFromCabalFile" fpath) $ do
+    pkgId <- package . packageDescription <$> readGenericPackageDescription normal fpath
+    pure $ Package (T.pack . unPackageName $ pkgName pkgId) (pkgVersion pkgId)
+
 
 -- -----------------------------------------------------------------------------
 

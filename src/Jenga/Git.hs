@@ -4,11 +4,14 @@ module Jenga.Git
   ( setupGitSubmodules
   ) where
 
+import           Control.Monad.Trans.Either (EitherT, handleIOEitherT)
+
 import qualified Data.Text as T
 
 import           Jenga.Config
 import           Jenga.Git.Command
 import           Jenga.Stack
+import           Jenga.Types
 
 import           Network.URI (parseURI, uriPath)
 
@@ -16,19 +19,20 @@ import           System.Directory (createDirectoryIfMissing, doesDirectoryExist,
 import           System.FilePath ((</>), dropExtension)
 
 
-setupGitSubmodules :: ModulesDirPath ->  [StackGitRepo] -> IO ()
+setupGitSubmodules :: ModulesDirPath ->  [StackGitRepo] -> EitherT JengaError IO ()
 setupGitSubmodules smp =
   mapM_ (setupSubmodule smp)
 
 
-setupSubmodule :: ModulesDirPath -> StackGitRepo -> IO ()
+setupSubmodule :: ModulesDirPath -> StackGitRepo -> EitherT JengaError IO ()
 setupSubmodule smp gitrepo = do
-  createDirectoryIfMissing False $ unModulesDirPath smp
-  let dir = buildSubmoduleDir smp gitrepo
-  exists <- doesDirectoryExist dir
-  if exists
-    then updateSubmodule dir gitrepo
-    else addSubmodule dir gitrepo
+  handleIOEitherT (JengaIOError "setupSubmodule" (unModulesDirPath smp)) $ do
+    createDirectoryIfMissing False $ unModulesDirPath smp
+    let dir = buildSubmoduleDir smp gitrepo
+    exists <- doesDirectoryExist dir
+    if exists
+      then updateSubmodule dir gitrepo
+      else addSubmodule dir gitrepo
 
 
 

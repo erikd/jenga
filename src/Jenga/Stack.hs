@@ -18,6 +18,7 @@ module Jenga.Stack
 
 import           Control.Applicative (optional)
 import           Control.Monad.Extra (mapMaybeM)
+import           Control.Monad.Trans.Either (EitherT, handleIOEitherT, hoistEither)
 
 import           Data.Aeson (FromJSON (..), ToJSON (..), Value (..), (.:), (.:?), (.=))
 import qualified Data.Aeson as Aeson
@@ -38,6 +39,7 @@ import qualified Data.Yaml as Y
 
 import           Jenga.Types
 
+import           System.IO.Error (isDoesNotExistError)
 
 newtype StackFilePath
   = StackFilePath { unstackFilePath :: FilePath }
@@ -204,9 +206,15 @@ parseStackConfig bs =
     Right cfg -> Right cfg
     Left s -> Left $ JengaStackError (T.pack s)
 
-readStackConfig :: StackFilePath -> IO (Either JengaError StackConfig)
-readStackConfig (StackFilePath stackYamlFile) =
-  parseStackConfig <$> BS.readFile stackYamlFile
+readStackConfig :: StackFilePath -> EitherT JengaError IO StackConfig
+readStackConfig (StackFilePath stackYamlFile) = do
+  bs <- handleIOEitherT handler $ BS.readFile stackYamlFile
+  hoistEither $ parseStackConfig bs
+  where
+    handler err
+      | isDoesNotExistError err = JengaStackMissing
+      | otherwise = JengaStackError $ T.pack (show err)
+
 
 renderStackConfig :: StackConfig -> ByteString
 renderStackConfig =
