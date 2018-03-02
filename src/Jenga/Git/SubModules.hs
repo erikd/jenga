@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-
 module Jenga.Git.SubModules
   ( GitSubmodule (..)
   , findSubmodules
@@ -9,6 +8,8 @@ module Jenga.Git.SubModules
 import           Control.Monad (forM)
 import           Control.Monad.Catch (handleIOError)
 import           Control.Monad.Extra (concatMapM)
+import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad.Trans.Either (EitherT, left)
 
 import           Data.Char (isSpace)
 import qualified Data.List as DL
@@ -28,16 +29,16 @@ data GitSubmodule = GitSubmodule
   }
 
 
-findSubmodules :: IO [GitSubmodule]
+findSubmodules :: EitherT JengaError IO [GitSubmodule]
 findSubmodules = do
   topdir <- findGitTopLevel
-  concatMapM mkGitSubmodule =<< readSubmodules topdir
+  concatMapM mkGitSubmodule =<< liftIO (readSubmodules topdir)
   where
     mkGitSubmodule dir = do
       files <- filter isCabalFile <$> listDirectoryRecursive dir
       forM files $ \ x -> do
-            let cf = CabalFilePath x
-            GitSubmodule dir cf <$> readPackageFromCabalFile cf
+        let cf = CabalFilePath x
+        GitSubmodule dir cf <$> readPackageFromCabalFile cf
 
 isCabalFile :: FilePath -> Bool
 isCabalFile file =
@@ -60,13 +61,13 @@ readSubmodules fpath =
 
 
 
-findGitTopLevel :: IO FilePath
+findGitTopLevel :: EitherT JengaError IO FilePath
 findGitTopLevel =
-  loop =<< getCurrentDirectory
+  loop =<< liftIO getCurrentDirectory
   where
-    loop "/" = do error "findGitTopLevel failed"
+    loop "/" = left JengaGitDirMissing
     loop cur = do
-      exists <- doesDirectoryExist $ cur </> ".git"
+      exists <- liftIO . doesDirectoryExist $ cur </> ".git"
       if exists
         then pure cur
         else loop (takeDirectory cur)

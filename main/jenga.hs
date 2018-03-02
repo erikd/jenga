@@ -2,6 +2,9 @@
 
 import           Control.Monad (forM_, unless)
 import           Control.Monad.Extra (concatMapM)
+import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad.Trans.Either (EitherT, left, runEitherT)
+import           Control.Monad.Trans.Either.Exit (orDie)
 
 import qualified Data.ByteString.Char8 as BS
 import           Data.Either (partitionEithers)
@@ -19,9 +22,8 @@ import           Options.Applicative
                         , help, helper, long, metavar, short, strOption)
 import qualified Options.Applicative as O
 
-import           System.Exit (exitFailure)
-import           System.FilePath ((</>), takeDirectory, takeFileName)
-import           System.IO (hPutStrLn, stderr)
+import           System.FilePath ((</>), takeDirectory)
+import           System.IO (stderr)
 
 import           Text.PrettyPrint.ANSI.Leijen (Doc)
 
@@ -112,84 +114,65 @@ stackFilePathP =
 
 commandHandler :: Command -> IO ()
 commandHandler cmd =
-  case cmd of
-    Initialize cfg -> initialize cfg
-    Update -> update
-    Parse scfg -> dumpStackToJSON scfg
+  orDie renderJengaError $
+    case cmd of
+      Initialize cfg -> initialize cfg
+      Update -> update
+      Parse scfg -> dumpStackToJSON scfg
 
-initialize :: JengaConfig -> IO ()
+initialize :: JengaConfig -> EitherT JengaError IO ()
 initialize jcfg = do
-  escfg <- readStackConfig (StackFilePath "stack.yaml")
-  ejcfg <- readJengaConfig
-  case (escfg, ejcfg) of
-    (Left err, _) -> putStrLn $ show err
-    (Right scfg, Left JengaConfigMissing) -> do
+  scfg <- readStackConfig (StackFilePath "stack.yaml")
+  ejcfg <- liftIO $ runEitherT readJengaConfig
+  case ejcfg of
+    Left JengaConfigMissing -> do
       runSetup scfg jcfg
       writeJengaConfig jcfg
-    (Right _, Left err) ->
-      putStrLn $ show err
-    (Right scfg, Right jcfg') -> do
-      T.putStrLn "Found existing Jenga config file and using that."
-      runSetup scfg jcfg'
+    Left err ->
+      left err
+    Right _ -> do
+      liftIO $ T.putStrLn "Found existing Jenga config file and using that."
+      runSetup scfg jcfg
 
-update :: IO ()
+update :: EitherT JengaError IO ()
 update = do
-  mscfg <- readStackConfig (StackFilePath "stack.yaml")
-  case mscfg of
-    Left err-> putStrLn $ show err
-    Right scfg -> do
-      ejcfg <- readJengaConfig
-      case ejcfg of
-        Left err-> putStrLn $ show err
-        Right jcfg ->
-          runSetup scfg jcfg
+  scfg <- readStackConfig (StackFilePath "stack.yaml")
+  jcfg <- readJengaConfig
+  runSetup scfg jcfg
 
-runSetup :: StackConfig -> JengaConfig -> IO ()
+runSetup :: StackConfig -> JengaConfig -> EitherT JengaError IO ()
 runSetup stackCfg (JengaConfig modsDir lockFormat dropDeps) = do
   checkModulesDirPath modsDir
   cfiles <- findProjectCabalFiles (StackFilePath "stack.yaml") modsDir
   setupGitSubmodules modsDir $ stackGitRepos stackCfg
   deps <- DL.nub . fmap dependencyName <$> concatMapM readPackageDependencies cfiles
-  plist <- processResolver stackCfg
+  plist <- getStackageResolverPkgList stackCfg
   subMods <- findSubmodules
   let pkgs = mergePackages (processPackageList deps plist) (stackExtraDeps stackCfg) subMods dropDeps
-  T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
+  liftIO . T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
   forM_ cfiles $ \ cabalpath -> do
     writeLockFile (toLockPath lockFormat cabalpath $ ghcVersion plist) pkgs
 
-dumpStackToJSON :: StackFilePath -> IO ()
+dumpStackToJSON :: StackFilePath -> EitherT JengaError IO ()
 dumpStackToJSON stackFile = do
-  escfg <- readStackConfig stackFile
-  case escfg of
-    Right scfg -> BS.putStrLn $ renderStackConfig scfg
-    Left err -> do
-      hPutStrLn stderr $ takeFileName (unstackFilePath stackFile) ++ ": " ++ show err
-      exitFailure
+  scfg <- readStackConfig stackFile
+  liftIO . BS.putStrLn $ renderStackConfig scfg
 
 -- -----------------------------------------------------------------------------
 
-checkModulesDirPath :: ModulesDirPath -> IO ()
+checkModulesDirPath :: ModulesDirPath -> EitherT JengaError IO ()
 checkModulesDirPath (ModulesDirPath modsDir) = do
-  noFiles <- DL.null <$> listFiles modsDir
-  unless noFiles $ do
-    T.hPutStrLn stderr $ "Found files in submodules directory '" <> T.pack modsDir <> "' which should only have other directories."
-    exitFailure
+  noFiles <- DL.null <$> liftIO (listFiles modsDir)
+  unless noFiles $
+    left $ JengaSubmodFules modsDir
 
-findProjectCabalFiles :: StackFilePath -> ModulesDirPath -> IO [CabalFilePath]
+findProjectCabalFiles :: StackFilePath -> ModulesDirPath -> EitherT JengaError IO [CabalFilePath]
 findProjectCabalFiles (StackFilePath stackFile) (ModulesDirPath modsDir) =
   fmap CabalFilePath . filter predicate <$> listDirectoryRecursive (takeDirectory stackFile)
   where
     predicate f = isCabalFile f && not (("." </> modsDir) `DL.isPrefixOf` f)
 
 -- -----------------------------------------------------------------------------
-
-processResolver :: StackConfig -> IO PackageList
-processResolver scfg = do
-  mpl <- getStackageResolverPkgList scfg
-  case mpl of
-    Left s -> error $ "Error parse JSON: " ++ s
-    Right pl -> pure pl
-
 
 processPackageList :: [Text] -> PackageList -> [Package]
 processPackageList deps plist = do

@@ -9,6 +9,7 @@ module Jenga.Config
   ) where
 
 import           Control.Monad.Extra (mapMaybeM)
+import           Control.Monad.Trans.Either (EitherT, handleIOEitherT, hoistEither)
 
 import           Data.Aeson (FromJSON (..), ToJSON (..), Value (..), (.:), (.=))
 import qualified Data.Aeson as Aeson
@@ -23,7 +24,7 @@ import qualified Data.Yaml as Y
 
 import           Jenga.Types
 
-import           System.IO.Error (isDoesNotExistError, tryIOError)
+import           System.IO.Error (isDoesNotExistError)
 
 
 newtype ModulesDirPath
@@ -77,22 +78,23 @@ parseJengaConfig bs =
 renderJengaConfig :: JengaConfig -> ByteString
 renderJengaConfig = Y.encode
 
-readJengaConfig :: IO (Either JengaError JengaConfig)
-readJengaConfig =
-  convert <$> tryIOError (BS.readFile configFilePath)
+readJengaConfig :: EitherT JengaError IO JengaConfig
+readJengaConfig = do
+  bs <- handleIOEitherT handler $ BS.readFile configFilePath
+  hoistEither $ parseJengaConfig bs
   where
-    convert x =
-      case x of
-        Left err -> Left $ toJE err
-        Right bs -> parseJengaConfig bs
-
-    toJE err
+    handler err
       | isDoesNotExistError err = JengaConfigMissing
-      | otherwise = JengaConfigError $ T.pack (show err)
+      | otherwise = JengaStackError $ T.pack (show err)
 
 
-writeJengaConfig :: JengaConfig -> IO ()
-writeJengaConfig cfg = BS.writeFile configFilePath $ renderJengaConfig cfg
+writeJengaConfig :: JengaConfig -> EitherT JengaError IO ()
+writeJengaConfig cfg =
+  handleIOEitherT handler $ BS.writeFile configFilePath (renderJengaConfig cfg)
+  where
+    handler =
+      JengaIOError "writeJengaConfig" configFilePath
+
 
 configFilePath :: FilePath
 configFilePath = ".jenga"

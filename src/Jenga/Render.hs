@@ -6,6 +6,8 @@ module Jenga.Render
   , toMafiaLockPath
   ) where
 
+import           Control.Monad.Trans.Either (EitherT, handleIOEitherT)
+
 import qualified Data.List as DL
 import           Data.Text (Text)
 import qualified Data.Text as T
@@ -24,7 +26,7 @@ data LockFilePath
   | CabalFreezePath !FilePath
 
 
-writeLockFile :: LockFilePath -> [Package] -> IO ()
+writeLockFile :: LockFilePath -> [Package] -> EitherT JengaError IO ()
 writeLockFile lockPath =
   case lockPath of
     MafiaLockPath mpath -> writeMafiaLock mpath
@@ -36,18 +38,18 @@ toLockPath lockFormat cfpath ghcVer =
     MafiaLock -> toMafiaLockPath cfpath ghcVer
     CabalFreeze -> toCabalFreezePath cfpath
 
-writeCabalConfig :: FilePath -> [Package] -> IO ()
+writeCabalConfig :: FilePath -> [Package] -> EitherT JengaError IO ()
 writeCabalConfig fpath pkgs =
-  LT.writeFile fpath . LT.unlines $ DL.map LT.fromChunks cabalLines
+  writeFileEitherT fpath . LT.unlines $ DL.map LT.fromChunks cabalLines
   where
     cabalLines = ["constraints:"] : DL.map renderCabalPackage pkgs
 
     renderCabalPackage pkg =
       "  " : renderPackage pkg ++ [","]
 
-writeMafiaLock :: FilePath -> [Package] -> IO ()
+writeMafiaLock :: FilePath -> [Package] -> EitherT JengaError IO ()
 writeMafiaLock mpath pkgs =
-  LT.writeFile mpath . LT.unlines $ DL.map LT.fromChunks mafiaLines
+  writeFileEitherT mpath . LT.unlines $ DL.map LT.fromChunks mafiaLines
   where
     mafiaLines = ["# mafia-lock-file-version: 0"] : DL.map renderPackage pkgs
 
@@ -66,3 +68,11 @@ toMafiaLockPath (CabalFilePath fp) ghcVer =
 toCabalFreezePath :: CabalFilePath -> LockFilePath
 toCabalFreezePath (CabalFilePath fp) =
   CabalFreezePath $ takeDirectory fp </> "cabal.config"
+
+
+writeFileEitherT :: FilePath -> LT.Text -> EitherT JengaError IO ()
+writeFileEitherT path =
+  handleIOEitherT handler . LT.writeFile path
+  where
+    handler =
+      JengaIOError "writeFileEitherT" path
