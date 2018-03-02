@@ -84,6 +84,7 @@ executable jenga
                       , jenga
                       , optparse-applicative    == 0.14.*
                       , text
+                      , transformers-either
 
 test-suite test
   type:                 exitcode-stdio-1.0
