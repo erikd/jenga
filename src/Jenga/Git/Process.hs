@@ -68,7 +68,7 @@ import qualified Data.Text.Encoding as T
 
 import           System.Directory (setCurrentDirectory)
 import           System.Exit (ExitCode(..))
-import           System.IO (IO, FilePath, Handle, BufferMode(..))
+import           System.IO (Handle, BufferMode(..))
 import qualified System.IO as IO
 import qualified System.Process as Process
 import qualified System.Process.Internals as ProcessInternals
