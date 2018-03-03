@@ -84,6 +84,7 @@ executable jenga
                       , jenga
                       , optparse-applicative    == 0.14.*
                       , text
+                      , transformers
                       , transformers-either
 
 test-suite test
