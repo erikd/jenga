@@ -24,6 +24,9 @@ cp -f ${INPUT_DIR}/* ${OUTPUT_DIR}
 assert_file_exists ${OUTPUT_DIR}/cabal.config
 assert_file_exists ${OUTPUT_DIR}/lib/wide-word/wide-word.cabal
 
+# If the freeze file is invalid this will fail.
+cabal sandbox init
+
 error=0
 diff -q ${OUTPUT_DIR}/cabal.config ${EXPECTED_DIR}/cabal.config || error=1
 
