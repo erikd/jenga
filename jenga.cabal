@@ -42,6 +42,8 @@ library
                       , http-types              == 0.9.*
                       , network-uri             == 2.6.*
                       , process                 == 1.6.*
+                      -- Not used directly. Needed to fix missing upper bound.
+                      , streaming-commons       >= 0.1.18         && < 0.2
                       , text                    == 1.2.*
                       , transformers            >= 0.4            && < 0.7
                       , transformers-either     == 0.0.*
