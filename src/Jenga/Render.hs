@@ -40,12 +40,17 @@ toLockPath lockFormat cfpath ghcVer =
 
 writeCabalConfig :: FilePath -> [Package] -> EitherT JengaError IO ()
 writeCabalConfig fpath pkgs =
-  writeFileEitherT fpath . LT.unlines $ DL.map LT.fromChunks cabalLines
+  -- Generating the cabal freeze file that cabal will actually accept is a
+  -- pain in the neck.
+  writeFileEitherT fpath $ LT.fromChunks (cabalLines ++ ["\n"])
   where
-    cabalLines = ["constraints:"] : DL.map renderCabalPackage pkgs
+    cabalLines =
+      case pkgs of
+        [] -> ["constraints:"]
+        (x:xs) -> DL.intersperse ",\n "
+                    $ T.concat ("constraints: " : renderPackage x)
+                        : DL.map (T.concat . renderPackage) xs
 
-    renderCabalPackage pkg =
-      "  " : renderPackage pkg ++ [","]
 
 writeMafiaLock :: FilePath -> [Package] -> EitherT JengaError IO ()
 writeMafiaLock mpath pkgs =
