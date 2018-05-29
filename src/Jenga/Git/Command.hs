@@ -6,34 +6,26 @@ module Jenga.Git.Command
   , gitUpdate
   ) where
 
-import           Control.Monad.Trans.Either (runEitherT)
+import           Control.Monad.Trans.Either (EitherT)
 
 import           Jenga.Git.Process
+import           Jenga.Types
 
 
-data JengaError
-  = GitProcessError ProcessError
-  deriving (Show)
-
-
-gitAddSubmodule :: FilePath -> String -> IO ()
+gitAddSubmodule :: FilePath -> String -> EitherT JengaError IO ()
 gitAddSubmodule dest repo =
   git ["submodule", "add", "--force", repo, dest]
 
-gitCheckoutCommit :: FilePath -> String -> IO ()
+gitCheckoutCommit :: FilePath -> String -> EitherT JengaError IO ()
 gitCheckoutCommit dir hash =
   git ["-C", dir, "checkout", hash]
 
-gitUpdate :: FilePath -> IO ()
+gitUpdate :: FilePath -> EitherT JengaError IO ()
 gitUpdate dir = do
   git ["-C", dir, "fetch"]
   git ["-C", dir, "submodule", "update"]
 
-git :: [Argument] -> IO ()
-git args =
-  either (error . show) (const $ pure ()) =<< wibble
-  where
-    wibble :: IO (Either JengaError Hush)
-    wibble = runEitherT $ call GitProcessError "git" args
-
-
+git :: [Argument] -> EitherT JengaError IO ()
+git args = do
+  Hush <- call (JengaGitError . renderProcessError) "git" args
+  pure ()

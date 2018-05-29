@@ -4,6 +4,7 @@ module Jenga.Git
   ( setupGitSubmodules
   ) where
 
+import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Trans.Either (EitherT, handleIOEitherT)
 
 import qualified Data.Text as T
@@ -28,12 +29,11 @@ setupSubmodule :: ModulesDirPath -> StackGitRepo -> EitherT JengaError IO ()
 setupSubmodule smp gitrepo = do
   handleIOEitherT (JengaIOError "setupSubmodule" (unModulesDirPath smp)) $ do
     createDirectoryIfMissing False $ unModulesDirPath smp
-    let dir = buildSubmoduleDir smp gitrepo
-    exists <- doesDirectoryExist dir
-    if exists
-      then updateSubmodule dir gitrepo
-      else addSubmodule dir gitrepo
-
+  let dir = buildSubmoduleDir smp gitrepo
+  exists <- liftIO $ doesDirectoryExist dir
+  if exists
+    then updateSubmodule dir gitrepo
+    else addSubmodule dir gitrepo
 
 
 buildSubmoduleDir :: ModulesDirPath -> StackGitRepo -> FilePath
@@ -56,14 +56,14 @@ split p =
         (h, t) -> h : splitter (drop 1 t)
 
 
-updateSubmodule :: FilePath -> StackGitRepo -> IO ()
+updateSubmodule :: FilePath -> StackGitRepo -> EitherT JengaError IO ()
 updateSubmodule dir gitrepo = do
-  putStrLn $ "Updating submodule '" ++ dir ++ "' to commit " ++ T.unpack (T.take 10 $ sgrCommit gitrepo)
+  liftIO . putStrLn $ "Updating submodule '" ++ dir ++ "' to commit " ++ T.unpack (T.take 10 $ sgrCommit gitrepo)
   gitUpdate dir
   gitCheckoutCommit dir $ T.unpack (sgrCommit gitrepo)
 
-addSubmodule :: FilePath -> StackGitRepo -> IO ()
+addSubmodule :: FilePath -> StackGitRepo -> EitherT JengaError IO ()
 addSubmodule dir gitrepo = do
-  putStrLn $ "Adding submodule '" ++ dir ++ "' at commit " ++ T.unpack (T.take 10 $ sgrCommit gitrepo)
+  liftIO . putStrLn $ "Adding submodule '" ++ dir ++ "' at commit " ++ T.unpack (T.take 10 $ sgrCommit gitrepo)
   gitAddSubmodule dir $ T.unpack (sgrUrl gitrepo)
   gitCheckoutCommit dir $ T.unpack (sgrCommit gitrepo)

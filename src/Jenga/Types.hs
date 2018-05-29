@@ -23,6 +23,7 @@ import qualified Data.Text as T
 
 import           Distribution.Version (Version, mkVersion, showVersion, versionNumbers)
 
+
 data LockFormat
   = MafiaLock
   | CabalFreeze
@@ -52,6 +53,7 @@ data JengaError
   | JengaJsonError !String
   | JengaHttpIOError !IOException
   | JengaSubmodFules !FilePath
+  | JengaGitError !Text
   deriving (Eq, Show)
 
 
@@ -82,6 +84,8 @@ renderJengaError je =
       "IOError during HTTP request: " <> renderIOException ioe
     JengaSubmodFules modsDir ->
       "Found files in submodules directory '" <> T.pack modsDir <> "' which should only have other directories."
+    JengaGitError msg ->
+      msg
 
 renderIOException :: IOException -> Text
 renderIOException =
