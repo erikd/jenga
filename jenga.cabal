@@ -96,6 +96,10 @@ test-suite test
   hs-source-dirs:       test
   main-is:              test.hs
 
+  other-modules:        Test.Jenga.Config
+                        Test.Jenga.Gen
+                        Test.Jenga.Stack
+
   build-depends:        base
                       , filepath
                       , hedgehog                == 0.5.*

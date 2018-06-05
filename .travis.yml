@@ -16,7 +16,6 @@ before_install:
 install:
  - cabal update
  - cabal sandbox init
- - cabal sandbox add-source lib/transformers-either
  - cabal install --only-dependencies --enable-tests
 
 script:
