@@ -46,7 +46,7 @@ library
                       , streaming-commons       >= 0.1.18         && < 0.2
                       , text                    == 1.2.*
                       , transformers            >= 0.4            && < 0.7
-                      , transformers-either     == 0.0.*
+                      , transformers-either     == 0.1.*
                       , unix                    == 2.7.*
                       , vector                  == 0.12.*
                       , yaml                    == 0.8.*

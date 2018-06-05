@@ -1,3 +1,0 @@
-[submodule "lib/transformers-either"]
-	path = lib/transformers-either
-	url = https://github.com/tmcgilchrist/transformers-either
