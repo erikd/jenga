@@ -1,5 +1,7 @@
 {
     "packages": [
+        "first",
+        "second",
         {
             "location": {
                 "git": "https://github.com/well-typed/cborg",
