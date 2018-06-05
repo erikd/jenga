@@ -180,12 +180,10 @@ newtype StackLocalDir
   deriving (Eq, Show)
 
 instance FromYAML StackLocalDir where
-  parseYAML = Y.withMap "StackLocalDir" $ \o ->
-    StackLocalDir <$> (o .: "location")
+  parseYAML = Y.withStr "StackLocalDir" (pure . StackLocalDir)
 
 instance ToJSON StackLocalDir where
-  toJSON (StackLocalDir s) =
-    Aeson.object [ "location" .= String s ]
+  toJSON (StackLocalDir s) = String s
 
 parseMaybeStackLocalDir :: Y.Node -> Parser (Maybe StackLocalDir)
 parseMaybeStackLocalDir =
