@@ -38,6 +38,7 @@ library
                       , exceptions              == 0.8.*
                       , extra                   == 1.6.*
                       , filepath                == 1.4.*
+                      , HsYAML                  >= 0.1.1          && < 0.2
                       , http-conduit            == 2.2.*
                       , http-types              == 0.9.*
                       , network-uri             == 2.6.*
@@ -49,7 +50,6 @@ library
                       , transformers-either     == 0.1.*
                       , unix                    == 2.7.*
                       , vector                  == 0.12.*
-                      , yaml                    == 0.8.*
 
   exposed-modules:      Jenga
 

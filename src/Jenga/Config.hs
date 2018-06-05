@@ -11,16 +11,15 @@ module Jenga.Config
 import           Control.Monad.Extra (mapMaybeM)
 import           Control.Monad.Trans.Either (EitherT, handleIOEitherT, hoistEither)
 
-import           Data.Aeson (FromJSON (..), ToJSON (..), Value (..), (.:), (.=))
+import           Data.Aeson (ToJSON (..), (.=))
 import qualified Data.Aeson as Aeson
-import           Data.Aeson.Types (typeMismatch)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BSL
 import           Data.Text (Text)
 import qualified Data.Text as T
-import qualified Data.Vector as V
-import           Data.Yaml (Parser)
-import qualified Data.Yaml as Y
+import           Data.YAML (Parser, FromYAML(..), (.:))
+import qualified Data.YAML as Y
 
 import           Jenga.Types
 
@@ -38,14 +37,15 @@ data JengaConfig = JengaConfig
   }
   deriving (Eq, Show)
 
-instance FromJSON JengaConfig where
-  parseJSON (Object o) =
+instance FromYAML JengaConfig where
+  parseYAML = Y.withMap "JengaConfig" $ \o ->
     JengaConfig
-      <$> (ModulesDirPath <$> o .: "submodule-dir")
+      <$> o .: "submodule-dir"
       <*> ((o .: "mafia-lock") >>= toLockFormat)
       <*> ((o .: "drop-deps") >>= parseDropDeps)
-  parseJSON invalid =
-    typeMismatch "JengaConfig" invalid
+
+instance FromYAML ModulesDirPath where
+  parseYAML = Y.withStr "ModulesDirPath" (pure . ModulesDirPath . T.unpack)
 
 toLockFormat :: Bool -> Parser LockFormat
 toLockFormat b =
@@ -59,24 +59,25 @@ instance ToJSON JengaConfig where
       , "drop-deps" .= jcDropDeps cfg
       ]
 
-parseDropDeps :: Value -> Parser [Text]
-parseDropDeps v =
-  case v of
-    Array a -> mapMaybeM parseMaybe $ V.toList a
-    invalid -> typeMismatch "parseDropDeps" invalid
+parseDropDeps :: Y.Node -> Parser [Text]
+parseDropDeps =
+    Y.withSeq "parseDropDeps" $ \a ->
+      mapMaybeM parseMaybe a
   where
-    parseMaybe :: Value -> Parser (Maybe Text)
-    parseMaybe (String s) = pure $ Just s
-    parseMaybe _ = pure Nothing
+    parseMaybe :: Y.Node -> Parser (Maybe Text)
+    parseMaybe (Y.Scalar (Y.SStr s)) = pure $ Just s
+    parseMaybe _                     = pure Nothing
 
 parseJengaConfig :: ByteString -> Either JengaError JengaConfig
 parseJengaConfig bs =
-  case Y.decodeEither bs of
-    Right cfg -> Right cfg
-    Left s -> Left $ JengaConfigError (T.pack s)
+  case Y.decodeStrict bs of
+    Right [cfg]   -> Right cfg
+    Right []      -> Left $ JengaConfigError "empty configuration"
+    Right (_:_:_) -> Left $ JengaConfigError "multiple documents in configuration"
+    Left s        -> Left $ JengaConfigError (T.pack s)
 
 renderJengaConfig :: JengaConfig -> ByteString
-renderJengaConfig = Y.encode
+renderJengaConfig = BSL.toStrict . Aeson.encode  -- Y.encode
 
 readJengaConfig :: EitherT JengaError IO JengaConfig
 readJengaConfig = do
