@@ -16,8 +16,8 @@ import           Jenga.PackageList
 import           Jenga.Stack
 import           Jenga.Types
 
-import           Network.HTTP.Client.Conduit (HttpException, Request)
-import qualified Network.HTTP.Client.Conduit as Http
+import           Network.HTTP.Simple (HttpException, Request)
+import qualified Network.HTTP.Simple as Http
 import           Network.HTTP.Types.Header (hAccept)
 import           Network.HTTP.Types.Status (status200)
 
@@ -38,13 +38,12 @@ runRequest :: Request -> EitherT JengaError IO ByteString
 runRequest request =
   either left pure =<< handlesEitherT handlers action
   where
-    action =
-      Http.withManager $ do
-        response <- Http.httpLbs request
-        pure $
-          if Http.responseStatus response /= status200
-            then Left $ JengaHttpStatus "getStackageResolverPkgList: " (show $ Http.responseStatus response)
-            else Right $ Http.responseBody response
+    action = do
+      response <- Http.httpLbs request
+      pure $
+        if Http.getResponseStatus response /= status200
+          then Left $ JengaHttpStatus "getStackageResolverPkgList: " (show $ Http.getResponseStatus response)
+          else Right $ Http.getResponseBody response
 
     handlers =
       [ Handler (pure . JengaHttpIOError)
@@ -61,4 +60,4 @@ parseRequestEitherT scfg = do
     handler =
       const . JengaParseUrl $ T.pack stackUrl
     modify req =
-      req { Http.requestHeaders = (hAccept, "application/json") : Http.requestHeaders req }
+      Http.setRequestHeader hAccept ["application/json"] req
