@@ -28,23 +28,21 @@ library
   hs-source-dirs:       src
 
   build-depends:        base                    >= 4.8            && < 5
-                      , aeson                   == 1.1.*
+                      , aeson                   >= 1.1            && < 1.4
                       , aeson-pretty            == 0.8.*
-                      , async                   == 2.1.*
+                      , async                   == 2.2.*
                       , bytestring              == 0.10.*
                       , Cabal                   == 2.0.*
                       , containers              == 0.5.*
                       , directory               == 1.3.*
-                      , exceptions              == 0.8.*
+                      , exceptions              == 0.8.*          && < 0.11
                       , extra                   == 1.6.*
                       , filepath                == 1.4.*
                       , HsYAML                  >= 0.1.1          && < 0.2
                       , http-conduit            == 2.2.*
-                      , http-types              == 0.9.*
+                      , http-types              >= 0.9            && < 0.13
                       , network-uri             == 2.6.*
                       , process                 == 1.6.*
-                      -- Not used directly. Needed to fix missing upper bound.
-                      , streaming-commons       >= 0.1.18         && < 0.2
                       , text                    == 1.2.*
                       , transformers            >= 0.4            && < 0.7
                       , transformers-either     == 0.1.*
@@ -102,7 +100,7 @@ test-suite test
 
   build-depends:        base
                       , filepath
-                      , hedgehog                == 0.5.*
+                      , hedgehog                == 0.6.*
                       , jenga
                       , text
 
