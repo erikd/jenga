@@ -15,7 +15,7 @@ import           Jenga.Types
 
 import           Network.URI (parseURI, uriPath)
 
-import           System.Directory (createDirectoryIfMissing, doesDirectoryExist, withCurrentDirectory)
+import           System.Directory (createDirectoryIfMissing, doesDirectoryExist)
 import           System.FilePath ((</>), dropExtension)
 
 
@@ -59,13 +59,11 @@ split p =
 updateSubmodule :: FilePath -> StackGitRepo -> IO ()
 updateSubmodule dir gitrepo = do
   putStrLn $ "Updating submodule '" ++ dir ++ "' to commit " ++ T.unpack (T.take 10 $ sgrCommit gitrepo)
-  withCurrentDirectory dir $ do
-    gitUpdate
-    gitCheckoutCommit $ T.unpack (sgrCommit gitrepo)
+  gitUpdate dir
+  gitCheckoutCommit dir $ T.unpack (sgrCommit gitrepo)
 
 addSubmodule :: FilePath -> StackGitRepo -> IO ()
 addSubmodule dir gitrepo = do
   putStrLn $ "Adding submodule '" ++ dir ++ "' at commit " ++ T.unpack (T.take 10 $ sgrCommit gitrepo)
   gitAddSubmodule dir $ T.unpack (sgrUrl gitrepo)
-  withCurrentDirectory dir $
-    gitCheckoutCommit $ T.unpack (sgrCommit gitrepo)
+  gitCheckoutCommit dir $ T.unpack (sgrCommit gitrepo)

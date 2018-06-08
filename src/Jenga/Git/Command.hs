@@ -20,14 +20,14 @@ gitAddSubmodule :: FilePath -> String -> IO ()
 gitAddSubmodule dest repo =
   git ["submodule", "add", "--force", repo, dest]
 
-gitCheckoutCommit :: String -> IO ()
-gitCheckoutCommit hash =
-  git ["checkout", hash]
+gitCheckoutCommit :: FilePath -> String -> IO ()
+gitCheckoutCommit dir hash =
+  git ["-C", dir, "checkout", hash]
 
-gitUpdate :: IO ()
-gitUpdate = do
-  git ["fetch"]
-  git ["submodule", "update"]
+gitUpdate :: FilePath -> IO ()
+gitUpdate dir = do
+  git ["-C", dir, "fetch"]
+  git ["-C", dir, "submodule", "update"]
 
 git :: [Argument] -> IO ()
 git args =
