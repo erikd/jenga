@@ -13,7 +13,7 @@ INPUT_DIR=$(dirname $0)/data
 OUTPUT_DIR=${TEST}
 EXPECTED_DIR=$(dirname $0)/expected
 
-mkdir -p $(dirname ${OUTPUT_DIR})
+mkdir -p ${OUTPUT_DIR}
 
 error_count=0
 
