@@ -11,9 +11,9 @@ INPUT_DIR=$(dirname $0)/data
 OUTPUT_DIR=${TEST}
 EXPECTED_DIR=$(dirname $0)/expected
 
-mkdir -p $(dirname ${OUTPUT_DIR})
+mkdir -p ${OUTPUT_DIR}
 
-cp -f ${INPUT_DIR}/* ${OUTPUT_DIR}
+cp -f ${INPUT_DIR}/* ${OUTPUT_DIR}/
 rm -f ${OUTPUT_DIR}/stack*.yaml
 cp -f ${INPUT_DIR}/stack-7.0.yaml ${OUTPUT_DIR}/stack.yaml
 
