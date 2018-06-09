@@ -1,0 +1,8 @@
+{
+    "submodule-dir": "lib",
+    "mafia-lock": true,
+    "drop-deps": [
+        "directory",
+        "filepath"
+    ]
+}
