@@ -56,15 +56,15 @@ import           Control.Monad.IO.Class (MonadIO(..))
 import           Control.Monad.Trans.Either (EitherT, firstEitherT, hoistEither, left, newEitherT)
 
 import           Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as B
-import qualified Data.List as DL
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.List as List
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Data.Monoid ((<>))
 import           Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
+import qualified Data.Text as Text
+import qualified Data.Text.Encoding as Text
 
 import           System.Directory (setCurrentDirectory)
 import           System.Exit (ExitCode(..))
@@ -147,18 +147,18 @@ renderOutErrCode :: OutErrCode Text -> Text
 renderOutErrCode (OutErrCode out0 err0 exit) =
   let
     out =
-      T.strip out0
+      Text.strip out0
 
     err =
-      T.strip err0
+      Text.strip err0
 
     output =
-     out <> (if T.null out then "" else "\n") <>
+     out <> (if Text.null out then "" else "\n") <>
      err
   in
     case exit of
       ExitFailure code ->
-        "Process failed with exit code: " <> T.pack (show code) <> "\n" <>
+        "Process failed with exit code: " <> Text.pack (show code) <> "\n" <>
         output
       ExitSuccess ->
         "Process finished successfully:\n" <>
@@ -176,12 +176,12 @@ data ProcessError =
 
 renderProcessError :: ProcessError -> Text
 renderProcessError = \case
-  ProcessFailure p code -> T.pack $
-    "Process failed: " <> DL.intercalate " " (processCommand p : processArguments p) <>
+  ProcessFailure p code -> Text.pack $
+    "Process failed: " <> List.intercalate " " (processCommand p : processArguments p) <>
     " (exit code: " <> show code <> ")"
 
-  ProcessException p ex -> T.pack $
-    "Process failed: " <> DL.intercalate " " (processCommand p : processArguments p) <>
+  ProcessException p ex -> Text.pack $
+    "Process failed: " <> List.intercalate " " (processCommand p : processArguments p) <>
     "\n" <> show ex
 
 ------------------------------------------------------------------------
@@ -259,7 +259,7 @@ instance ProcessResult (Out ByteString) where
 
     (Nothing, Just hOut, Nothing, pid) <- createProcess cp
 
-    out  <- liftIO (B.hGetContents hOut)
+    out  <- liftIO (BS.hGetContents hOut)
     code <- liftIO (Process.waitForProcess pid)
 
     return (code, Out out)
@@ -270,7 +270,7 @@ instance ProcessResult (Err ByteString) where
 
     (Nothing, Nothing, Just hErr, pid) <- createProcess cp
 
-    err  <- liftIO (B.hGetContents hErr)
+    err  <- liftIO (BS.hGetContents hErr)
     code <- liftIO (Process.waitForProcess pid)
 
     return (code, Err err)
@@ -282,8 +282,8 @@ instance ProcessResult (OutErr ByteString) where
 
     (Nothing, Just hOut, Just hErr, pid) <- createProcess cp
 
-    asyncOut <- liftIO (async (B.hGetContents hOut))
-    asyncErr <- liftIO (async (B.hGetContents hErr))
+    asyncOut <- liftIO (async (BS.hGetContents hOut))
+    asyncErr <- liftIO (async (BS.hGetContents hErr))
 
     out  <- waitCatchE p asyncOut
     err  <- waitCatchE p asyncErr
@@ -298,8 +298,8 @@ instance ProcessResult (OutErrCode ByteString) where
 
     (Nothing, Just hOut, Just hErr, pid) <- createProcess cp
 
-    asyncOut <- liftIO (async (B.hGetContents hOut))
-    asyncErr <- liftIO (async (B.hGetContents hErr))
+    asyncOut <- liftIO (async (BS.hGetContents hOut))
+    asyncErr <- liftIO (async (BS.hGetContents hErr))
 
     out  <- waitCatchE p asyncOut
     err  <- waitCatchE p asyncErr
@@ -329,16 +329,16 @@ instance ProcessResult Clean where
     return (code, Clean)
 
 instance ProcessResult (Out Text) where
-  callProcess p = fmap T.decodeUtf8 <$> callProcess p
+  callProcess p = fmap Text.decodeUtf8 <$> callProcess p
 
 instance ProcessResult (Err Text) where
-  callProcess p = fmap T.decodeUtf8 <$> callProcess p
+  callProcess p = fmap Text.decodeUtf8 <$> callProcess p
 
 instance ProcessResult (OutErr Text) where
-  callProcess p = fmap T.decodeUtf8 <$> callProcess p
+  callProcess p = fmap Text.decodeUtf8 <$> callProcess p
 
 instance ProcessResult (OutErrCode Text) where
-  callProcess p = fmap T.decodeUtf8 <$> callProcess p
+  callProcess p = fmap Text.decodeUtf8 <$> callProcess p
 
 ------------------------------------------------------------------------
 

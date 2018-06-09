@@ -9,11 +9,7 @@ module Jenga.Git.Command
 
 import           Control.Monad.Trans.Either (EitherT)
 
-import           Data.Char (isSpace)
 import           Data.Text (Text)
-import qualified Data.Text as Text
-import qualified Data.Text.Encoding as Text
-import qualified Data.Text.Encoding.Error as Text
 
 import           Jenga.Git.Process
 import           Jenga.Types
@@ -43,7 +39,4 @@ gitHush args = do
 
 gitOut :: [Argument] -> EitherT JengaError IO Text
 gitOut args =
-  Text.takeWhile (not . isSpace)
-    . Text.decodeUtf8With Text.lenientDecode
-    . unOut
-    <$> call (JengaGitError . renderProcessError) "git" args
+  unOut <$> call (JengaGitError . renderProcessError) "git" args

@@ -7,7 +7,7 @@ module Jenga.Git
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Trans.Either (EitherT, handleIOEitherT, hoistEither)
 
-import qualified Data.Text as T
+import qualified Data.Text as Text
 
 import           Jenga.Config
 import           Jenga.Git.Command
@@ -38,7 +38,7 @@ setupSubmodule smp gitrepo = do
 
 buildSubmoduleDir :: ModulesDirPath -> StackGitRepo -> Either JengaError FilePath
 buildSubmoduleDir (ModulesDirPath smp) gitrepo =
-  case parseURI (T.unpack $ sgrUrl gitrepo) of
+  case parseURI (Text.unpack $ sgrUrl gitrepo) of
     Nothing -> Left $ JengaParseUrl (sgrUrl gitrepo)
     Just uri ->
       case split (== '/') $ uriPath uri of
@@ -58,12 +58,12 @@ split p =
 
 updateSubmodule :: FilePath -> StackGitRepo -> EitherT JengaError IO ()
 updateSubmodule dir gitrepo = do
-  liftIO . putStrLn $ "Updating submodule '" ++ dir ++ "' to commit " ++ T.unpack (T.take 10 $ sgrCommit gitrepo)
+  liftIO . putStrLn $ "Updating submodule '" ++ dir ++ "' to commit " ++ Text.unpack (Text.take 10 $ sgrCommit gitrepo)
   gitUpdate dir
-  gitCheckoutCommit dir $ T.unpack (sgrCommit gitrepo)
+  gitCheckoutCommit dir $ Text.unpack (sgrCommit gitrepo)
 
 addSubmodule :: FilePath -> StackGitRepo -> EitherT JengaError IO ()
 addSubmodule dir gitrepo = do
-  liftIO . putStrLn $ "Adding submodule '" ++ dir ++ "' at commit " ++ T.unpack (T.take 10 $ sgrCommit gitrepo)
-  gitAddSubmodule dir $ T.unpack (sgrUrl gitrepo)
-  gitCheckoutCommit dir $ T.unpack (sgrCommit gitrepo)
+  liftIO . putStrLn $ "Adding submodule '" ++ dir ++ "' at commit " ++ Text.unpack (Text.take 10 $ sgrCommit gitrepo)
+  gitAddSubmodule dir $ Text.unpack (sgrUrl gitrepo)
+  gitCheckoutCommit dir $ Text.unpack (sgrCommit gitrepo)
