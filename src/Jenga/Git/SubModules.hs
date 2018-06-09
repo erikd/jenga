@@ -12,7 +12,7 @@ import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Trans.Either (EitherT, left)
 
 import           Data.Char (isSpace)
-import qualified Data.List as DL
+import qualified Data.List as List
 
 import           Jenga.Cabal
 import           Jenga.IO
@@ -50,7 +50,7 @@ readSubmodules fpath =
     xs <- lines <$> readFile (fpath </> ".gitmodules")
     pure $ map clean $ filter isPathLine xs
   where
-    isPathLine xs = DL.isPrefixOf "path" $ dropWhile isSpace xs
+    isPathLine xs = List.isPrefixOf "path" $ dropWhile isSpace xs
 
     clean = dropWhile isSpace . drop 1 . dropWhile (/= '=')
 

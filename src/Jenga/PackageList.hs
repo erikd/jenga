@@ -10,7 +10,7 @@ import           Data.Aeson (FromJSON (..), Value (..), (.:))
 import           Data.Aeson.Types (Parser, typeMismatch)
 
 import           Data.Map.Strict (Map)
-import qualified Data.Map.Strict as DM
+import qualified Data.Map.Strict as Map
 
 import           Data.Text (Text)
 
@@ -69,7 +69,7 @@ instance FromJSON PackageList where
 
 mkPackageTempMap :: [PackageTemp] -> Map Text Package
 mkPackageTempMap =
-  DM.fromList . fmap convert
+  Map.fromList . fmap convert
   where
     convert (PackageTemp nam ver _ _) =
       (nam, Package nam ver)
@@ -80,7 +80,7 @@ lookupPackages plist deps =
   where
     pmap = packageMap plist
     plookup k =
-      case DM.lookup k pmap of
+      case Map.lookup k pmap of
         Nothing -> Left k
         Just x -> Right (k, x)
 

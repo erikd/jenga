@@ -10,7 +10,7 @@ import           Control.Monad.Trans.Either (EitherT, firstEitherT, handleIOEith
 
 import           Data.Aeson (eitherDecode')
 import           Data.ByteString.Lazy (ByteString)
-import qualified Data.Text as T
+import qualified Data.Text as Text
 
 import           Jenga.PackageList
 import           Jenga.Stack
@@ -56,8 +56,8 @@ parseRequestEitherT scfg = do
   fmap modify . handleIOEitherT handler $ Http.parseRequest stackUrl
   where
     stackUrl =
-      stackageUrl ++ T.unpack (stackResolver scfg)
+      stackageUrl ++ Text.unpack (stackResolver scfg)
     handler =
-      const . JengaParseUrl $ T.pack stackUrl
+      const . JengaParseUrl $ Text.pack stackUrl
     modify req =
       Http.setRequestHeader hAccept ["application/json"] req

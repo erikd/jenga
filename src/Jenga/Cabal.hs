@@ -14,9 +14,9 @@ module Jenga.Cabal
 
 import           Control.Monad.Trans.Either (EitherT, handleIOEitherT)
 
-import qualified Data.Map.Strict as DM
+import qualified Data.Map.Strict as Map
 import           Data.Text (Text)
-import qualified Data.Text as T
+import qualified Data.Text as Text
 
 import           Distribution.Package (Dependency (..), PackageIdentifier (..), unPackageName)
 import           Distribution.PackageDescription
@@ -54,13 +54,13 @@ readPackageFromCabalFile :: CabalFilePath -> EitherT JengaError IO Package
 readPackageFromCabalFile (CabalFilePath fpath) =
   handleIOEitherT (JengaIOError "readPackageFromCabalFile" fpath) $ do
     pkgId <- package . packageDescription <$> readGenericPackageDescription normal fpath
-    pure $ Package (T.pack . unPackageName $ pkgName pkgId) (pkgVersion pkgId)
+    pure $ Package (Text.pack . unPackageName $ pkgName pkgId) (pkgVersion pkgId)
 
 
 -- -----------------------------------------------------------------------------
 
 sortNubByName :: [Dependency] -> [Dependency]
-sortNubByName = fmap toDep . DM.toList . DM.fromList . fmap fromDep
+sortNubByName = fmap toDep . Map.toList . Map.fromList . fmap fromDep
   where
     fromDep (Dependency n v) = (n, v)
     toDep (n, v) = Dependency n v
@@ -72,7 +72,7 @@ filterPackageName (PackageIdentifier pname _) =
     pName (Dependency pn _) = pn
 
 dependencyName :: Dependency -> Text
-dependencyName (Dependency name _) = T.pack $ unPackageName name
+dependencyName (Dependency name _) = Text.pack $ unPackageName name
 
 
 extractLibraryDeps :: Maybe (CondTree ConfVar [Dependency] Library) -> [Dependency]

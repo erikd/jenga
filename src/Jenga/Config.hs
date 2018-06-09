@@ -15,11 +15,11 @@ import           Data.Aeson (ToJSON (..), (.=))
 import qualified Data.Aeson as Aeson
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString.Lazy as LBS
 import           Data.Text (Text)
-import qualified Data.Text as T
-import           Data.YAML (Parser, FromYAML(..), (.:))
-import qualified Data.YAML as Y
+import qualified Data.Text as Text
+import           Data.YAML (FromYAML(..), Node (..), Parser, Scalar (..), (.:))
+import qualified Data.YAML as Yaml
 
 import           Jenga.Types
 
@@ -38,14 +38,14 @@ data JengaConfig = JengaConfig
   deriving (Eq, Show)
 
 instance FromYAML JengaConfig where
-  parseYAML = Y.withMap "JengaConfig" $ \o ->
+  parseYAML = Yaml.withMap "JengaConfig" $ \o ->
     JengaConfig
       <$> o .: "submodule-dir"
       <*> ((o .: "mafia-lock") >>= toLockFormat)
       <*> ((o .: "drop-deps") >>= parseDropDeps)
 
 instance FromYAML ModulesDirPath where
-  parseYAML = Y.withStr "ModulesDirPath" (pure . ModulesDirPath . T.unpack)
+  parseYAML = Yaml.withStr "ModulesDirPath" (pure . ModulesDirPath . Text.unpack)
 
 toLockFormat :: Bool -> Parser LockFormat
 toLockFormat b =
@@ -59,25 +59,25 @@ instance ToJSON JengaConfig where
       , "drop-deps" .= jcDropDeps cfg
       ]
 
-parseDropDeps :: Y.Node -> Parser [Text]
+parseDropDeps :: Node -> Parser [Text]
 parseDropDeps =
-    Y.withSeq "parseDropDeps" $ \a ->
+    Yaml.withSeq "parseDropDeps" $ \a ->
       mapMaybeM parseMaybe a
   where
-    parseMaybe :: Y.Node -> Parser (Maybe Text)
-    parseMaybe (Y.Scalar (Y.SStr s)) = pure $ Just s
-    parseMaybe _                     = pure Nothing
+    parseMaybe :: Node -> Parser (Maybe Text)
+    parseMaybe (Scalar (SStr s)) = pure $ Just s
+    parseMaybe _                 = pure Nothing
 
 parseJengaConfig :: ByteString -> Either JengaError JengaConfig
 parseJengaConfig bs =
-  case Y.decodeStrict bs of
+  case Yaml.decodeStrict bs of
     Right [cfg]   -> Right cfg
     Right []      -> Left $ JengaConfigError "empty configuration"
     Right (_:_:_) -> Left $ JengaConfigError "multiple documents in configuration"
-    Left s        -> Left $ JengaConfigError (T.pack s)
+    Left s        -> Left $ JengaConfigError (Text.pack s)
 
 renderJengaConfig :: JengaConfig -> ByteString
-renderJengaConfig = BSL.toStrict . Aeson.encode  -- Y.encode
+renderJengaConfig = LBS.toStrict . Aeson.encode  -- Yaml.encode
 
 readJengaConfig :: EitherT JengaError IO JengaConfig
 readJengaConfig = do
@@ -86,7 +86,7 @@ readJengaConfig = do
   where
     handler err
       | isDoesNotExistError err = JengaConfigMissing
-      | otherwise = JengaStackError $ T.pack (show err)
+      | otherwise = JengaStackError $ Text.pack (show err)
 
 
 writeJengaConfig :: JengaConfig -> EitherT JengaError IO ()

@@ -27,13 +27,13 @@ import           Data.Aeson.Encode.Pretty (encodePretty', defConfig)
 import           Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
-import qualified Data.List as DL
+import qualified Data.List as List
 import           Data.Monoid ((<>))
 
 import           Data.Text (Text)
-import qualified Data.Text as T
-import           Data.YAML (Parser, FromYAML (..), (.:), (.:?))
-import qualified Data.YAML as Y
+import qualified Data.Text as Text
+import           Data.YAML (FromYAML (..), Node (..), Parser, Scalar (..), (.:), (.:?))
+import qualified Data.YAML as Yaml
 
 import           Jenga.Types
 
@@ -81,7 +81,7 @@ stackGitRepos cfg =
 -- -----------------------------------------------------------------------------
 
 instance FromYAML StackConfig where
-  parseYAML = Y.withMap "StackConfig" $ \o ->
+  parseYAML = Yaml.withMap "StackConfig" $ \o ->
     StackConfig
       <$> o .: "resolver"
       <*> ((o .:? "extra-deps") >>= maybe (pure []) (parseArray "StackExtraDep" parseYAML))
@@ -98,17 +98,17 @@ instance ToJSON StackConfig where
       , "packages" .= (fmap toJSON (cfgLocalDirs cfg) ++ fmap toJSON (cfgGitRepos cfg))
       ]
 
-parseArray :: String -> (Y.Node -> Parser a) -> Y.Node -> Parser [a]
+parseArray :: String -> (Node -> Parser a) -> Node -> Parser [a]
 parseArray name parser v =
   case v of
-    Y.Scalar Y.SNull -> pure []
-    _                -> Y.withSeq name (mapM parser) v
+    Scalar SNull -> pure []
+    _            -> Yaml.withSeq name (mapM parser) v
 
-parseMaybeArray :: String -> (Y.Node -> Parser (Maybe a)) -> Y.Node -> Parser [a]
+parseMaybeArray :: String -> (Node -> Parser (Maybe a)) -> Node -> Parser [a]
 parseMaybeArray name parser v =
   case v of
-    Y.Scalar Y.SNull -> pure []
-    _                -> Y.withSeq name (mapMaybeM parser) v
+    Scalar SNull -> pure []
+    _            -> Yaml.withSeq name (mapMaybeM parser) v
 
 data ConfigExtraDep
   = ConfigExtraDep !StackExtraDep
@@ -120,23 +120,23 @@ data StackExtraDep
   deriving (Eq, Show)
 
 instance FromYAML ConfigExtraDep where
-  parseYAML (Y.Scalar (Y.SStr s)) = ConfigExtraDep <$> parseStackExtraDep s
-  parseYAML (Y.Mapping _ o)       = ConfigExtraDepRepo <$> (StackGitRepo <$> o .: "git" <*> o .: "commit")
+  parseYAML (Scalar (SStr s)) = ConfigExtraDep <$> parseStackExtraDep s
+  parseYAML (Mapping _ o)     = ConfigExtraDepRepo <$> (StackGitRepo <$> o .: "git" <*> o .: "commit")
 
-  parseYAML invalid = Y.typeMismatch "StackExtraDep" invalid
+  parseYAML invalid = Yaml.typeMismatch "StackExtraDep" invalid
 
 parseStackExtraDep :: Text -> Parser StackExtraDep
 parseStackExtraDep str = do
   -- Extra-deps are of the form 'packageName-version' where packageName itself
   -- may have a dash in it.
-  let xs = T.splitOn "-" str
-  if DL.length xs >= 2
-    then pure $ StackExtraDep (T.intercalate "-" $ init xs) (readVersion $ last xs)
-    else fail $ "Can't find version number in extra-dep : " <> T.unpack str
+  let xs = Text.splitOn "-" str
+  if List.length xs >= 2
+    then pure $ StackExtraDep (Text.intercalate "-" $ init xs) (readVersion $ last xs)
+    else fail $ "Can't find version number in extra-dep : " <> Text.unpack str
 
 instance ToJSON ConfigExtraDep where
   toJSON (ConfigExtraDep (StackExtraDep name version)) =
-    Aeson.String $ name <> "-" <> T.pack (showVersion version)
+    Aeson.String $ name <> "-" <> Text.pack (showVersion version)
   toJSON (ConfigExtraDepRepo sgr) =
     Aeson.object
       [ "git" .= sgrUrl sgr
@@ -149,7 +149,7 @@ data StackGitRepo = StackGitRepo
   } deriving (Eq, Show)
 
 instance FromYAML StackGitRepo where
-  parseYAML = Y.withMap "StackGitRep" $ \o ->
+  parseYAML = Yaml.withMap "StackGitRep" $ \o ->
     StackGitRepo
         <$> o .: "git"
         <*> o .: "commit"
@@ -164,13 +164,13 @@ instance ToJSON StackGitRepo where
             ]
       ]
 
-parseMaybeStackGitRepo :: Y.Node -> Parser (Maybe StackGitRepo)
+parseMaybeStackGitRepo :: Node -> Parser (Maybe StackGitRepo)
 parseMaybeStackGitRepo v =
   case v of
-    Y.Mapping _ o ->
+    Mapping _ o ->
       (o .: "location") >>= \ p ->
         case p of
-          Y.Mapping _ q -> Just <$> (StackGitRepo <$> q .: "git" <*> q .: "commit")
+          Mapping _ q -> Just <$> (StackGitRepo <$> q .: "git" <*> q .: "commit")
           _             -> pure Nothing
     _ -> pure Nothing
 
@@ -180,12 +180,12 @@ newtype StackLocalDir
   deriving (Eq, Show)
 
 instance FromYAML StackLocalDir where
-  parseYAML = Y.withStr "StackLocalDir" (pure . StackLocalDir)
+  parseYAML = Yaml.withStr "StackLocalDir" (pure . StackLocalDir)
 
 instance ToJSON StackLocalDir where
   toJSON (StackLocalDir s) = String s
 
-parseMaybeStackLocalDir :: Y.Node -> Parser (Maybe StackLocalDir)
+parseMaybeStackLocalDir :: Node -> Parser (Maybe StackLocalDir)
 parseMaybeStackLocalDir =
   optional . parseYAML
 
@@ -193,11 +193,11 @@ parseMaybeStackLocalDir =
 
 parseStackConfig :: ByteString -> Either JengaError StackConfig
 parseStackConfig bs =
-  case Y.decodeStrict bs of
+  case Yaml.decodeStrict bs of
     Right [cfg] -> Right cfg
     Right []    -> Left $ JengaStackError "empty stack configuration file"
     Right (_:_:_) -> Left $ JengaStackError "Multiple documents encountered in stack configuration file"
-    Left s      -> Left $ JengaStackError (T.pack s)
+    Left s      -> Left $ JengaStackError (Text.pack s)
 
 readStackConfig :: StackFilePath -> EitherT JengaError IO StackConfig
 readStackConfig (StackFilePath stackYamlFile) = do
@@ -206,7 +206,7 @@ readStackConfig (StackFilePath stackYamlFile) = do
   where
     handler err
       | isDoesNotExistError err = JengaStackMissing
-      | otherwise = JengaStackError $ T.pack (show err)
+      | otherwise = JengaStackError $ Text.pack (show err)
 
 
 renderStackConfig :: StackConfig -> ByteString
