@@ -22,13 +22,14 @@ cp -f ${INPUT_DIR}/* ${OUTPUT_DIR}/
   ${JENGA} init )
 
 assert_file_exists ${OUTPUT_DIR}/${testname}.lock-8.0.2
+assert_file_exists ${OUTPUT_DIR}/.jenga
 
 error=0
-diff -q ${OUTPUT_DIR}/${testname}.lock-8.0.2 ${EXPECTED_DIR}/${testname}.lock-8.0.2 || error=1
+compare_files ${OUTPUT_DIR}/${testname}.lock-8.0.2 ${EXPECTED_DIR}/${testname}.lock-8.0.2
+compare_files ${OUTPUT_DIR}/.jenga ${EXPECTED_DIR}/jenga.yaml
 
 if test "${error}" = "0"; then
 	pass_test
 else
-    diff ${EXPECTED_DIR}/${testname}.lock-8.0.2 ${OUTPUT_DIR}/${testname}.lock-8.0.2 || exit 0
 	fail_test
 fi

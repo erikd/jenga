@@ -58,3 +58,16 @@ sort_diff () {
     sort ${ACTUAL} > ${ACTUAL_SORTED}
     diff ${EXPECTED_SORTED} ${ACTUAL_SORTED}
 }
+
+compare_files () {
+    actual="$1"
+    expect="$2"
+
+    test -f ${expect} || echo "New file" > ${expect}
+
+	local rc=0
+    cmp ${actual} ${expect} > /dev/null || rc=1
+    if test ${rc} -ne 0  ; then
+        ${DIFF} ${actual} ${expect} || error=1
+    fi
+}
