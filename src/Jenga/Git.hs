@@ -5,7 +5,7 @@ module Jenga.Git
   ) where
 
 import           Control.Monad.IO.Class (liftIO)
-import           Control.Monad.Trans.Either (EitherT, handleIOEitherT)
+import           Control.Monad.Trans.Either (EitherT, handleIOEitherT, hoistEither)
 
 import qualified Data.Text as T
 
@@ -29,21 +29,21 @@ setupSubmodule :: ModulesDirPath -> StackGitRepo -> EitherT JengaError IO ()
 setupSubmodule smp gitrepo = do
   handleIOEitherT (JengaIOError "setupSubmodule" (unModulesDirPath smp)) $ do
     createDirectoryIfMissing False $ unModulesDirPath smp
-  let dir = buildSubmoduleDir smp gitrepo
+  dir <- hoistEither $ buildSubmoduleDir smp gitrepo
   exists <- liftIO $ doesDirectoryExist dir
   if exists
     then updateSubmodule dir gitrepo
     else addSubmodule dir gitrepo
 
 
-buildSubmoduleDir :: ModulesDirPath -> StackGitRepo -> FilePath
+buildSubmoduleDir :: ModulesDirPath -> StackGitRepo -> Either JengaError FilePath
 buildSubmoduleDir (ModulesDirPath smp) gitrepo =
   case parseURI (T.unpack $ sgrUrl gitrepo) of
-    Nothing -> error $ "Not able to parse " ++ show (sgrUrl gitrepo)
+    Nothing -> Left $ JengaParseUrl (sgrUrl gitrepo)
     Just uri ->
       case split (== '/') $ uriPath uri of
-        ["",  _, name] -> smp </> dropExtension name
-        xs -> error $ "buildSubmoduleDir: Bad git repo user/project: " ++ show xs
+        ["",  _, name] -> Right $ smp </> dropExtension name
+        _ -> Left $ JengaParseUrl (sgrUrl gitrepo)
 
 split :: (a -> Bool) -> [a] -> [[a]]
 split p =
