@@ -13,6 +13,7 @@ import           Control.Monad.Trans.Either (EitherT, handleIOEitherT, hoistEith
 
 import           Data.Aeson (ToJSON (..), (.=))
 import qualified Data.Aeson as Aeson
+import qualified Data.Aeson.Encode.Pretty as Aeson
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -77,7 +78,8 @@ parseJengaConfig bs =
     Left s        -> Left $ JengaConfigError (Text.pack s)
 
 renderJengaConfig :: JengaConfig -> ByteString
-renderJengaConfig = LBS.toStrict . Aeson.encode  -- Yaml.encode
+renderJengaConfig cfg =
+  LBS.toStrict $ LBS.append (Aeson.encodePretty cfg) "\n"  -- Yaml.encode
 
 readJengaConfig :: EitherT JengaError IO JengaConfig
 readJengaConfig = do
