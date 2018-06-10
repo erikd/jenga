@@ -6,6 +6,11 @@
             "hash": "354f9decd7019c026080820d2b120bf1b7c5f296",
             "path": "lib/wide-word",
             "url": "https://github.com/erikd/wide-word"
+        },
+        {
+            "hash": "18b5193660318df7617a6a99866b96b706fc2a86",
+            "path": "lib/stm",
+            "url": "https://github.com/haskell/stm"
         }
     ],
     "drop-deps": []

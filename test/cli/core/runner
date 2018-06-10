@@ -34,7 +34,14 @@ banner () {
 assert_file_exists () {
     if test ! -f "$1" ; then
         echo "Output file '$1' is missing."
-        fail_test
+        error=1
+    fi
+}
+
+assert_file_absent () {
+    if test -f "$1" ; then
+        echo "File '$1' is present but should not be."
+        error=1
     fi
 }
 
