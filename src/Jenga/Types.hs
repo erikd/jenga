@@ -21,7 +21,8 @@ import           Data.Monoid ((<>))
 import           Data.Text (Text)
 import qualified Data.Text as T
 
-import           Distribution.Version (Version, mkVersion, showVersion, versionNumbers)
+import           Distribution.Pretty (prettyShow)
+import           Distribution.Version (Version, mkVersion, versionNumbers)
 
 
 data LockFormat
@@ -39,6 +40,8 @@ readVersion :: Text -> Version
 readVersion =
   mkVersion . DL.map (read . T.unpack) . T.split (== '.')
 
+showVersion :: Version -> String
+showVersion = prettyShow
 
 data JengaError
   = JengaConfigMissing
