@@ -127,31 +127,38 @@ initialize jcfg = do
   case ejcfg of
     Left JengaConfigMissing -> do
       runSetup scfg jcfg
-      writeJengaConfig (mergeGitSubmodules jcfg $ stackGitRepos scfg)
     Left err ->
       left err
     Right _ -> do
       liftIO $ Text.putStrLn "Found existing Jenga config file and using that."
-      runSetup scfg jcfg
+      runUpdate scfg jcfg
 
 update :: EitherT JengaError IO ()
 update = do
   scfg <- readStackConfig (StackFilePath "stack.yaml")
   jcfg <- readJengaConfig
+  runUpdate scfg jcfg
+
+runUpdate :: StackConfig -> JengaConfig -> EitherT JengaError IO ()
+runUpdate scfg jcfg = do
   runSetup scfg jcfg
+  let (newConfig, oldSubmods) = mergeGitSubmodules jcfg $ stackGitRepos scfg
+  forM_ oldSubmods $ \ sm -> gitRemove (jsmPath sm)
+  writeJengaConfig newConfig
 
 runSetup :: StackConfig -> JengaConfig -> EitherT JengaError IO ()
-runSetup stackCfg (JengaConfig modsDir lockFormat dropDeps _) = do
-  checkModulesDirPath modsDir
-  cfiles <- findProjectCabalFiles (StackFilePath "stack.yaml") modsDir
-  setupGitSubmodules modsDir $ stackGitRepos stackCfg
+runSetup scfg jcfg = do
+  checkModulesDirPath (jcModulesDirPath jcfg)
+  cfiles <- findProjectCabalFiles (StackFilePath "stack.yaml") (jcModulesDirPath jcfg)
+  setupGitSubmodules (jcModulesDirPath jcfg) $ stackGitRepos scfg
   deps <- List.nub . fmap dependencyName <$> concatMapM readPackageDependencies cfiles
-  plist <- getStackageResolverPkgList stackCfg
+  plist <- getStackageResolverPkgList scfg
   subMods <- findSubmodules
-  let pkgs = mergePackages (processPackageList deps plist) (stackExtraDeps stackCfg) subMods dropDeps
+  let pkgs = mergePackages (processPackageList deps plist) (stackExtraDeps scfg) subMods (jcDropDeps jcfg)
   liftIO . Text.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
   forM_ cfiles $ \ cabalpath -> do
-    writeLockFile (toLockPath lockFormat cabalpath $ ghcVersion plist) pkgs
+    writeLockFile (toLockPath (jcMafiaLock jcfg) cabalpath $ ghcVersion plist) pkgs
+  writeJengaConfig $ fst (mergeGitSubmodules jcfg $ stackGitRepos scfg)
 
 dumpStackToJSON :: StackFilePath -> EitherT JengaError IO ()
 dumpStackToJSON stackFile = do

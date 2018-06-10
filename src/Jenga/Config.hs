@@ -4,6 +4,7 @@ module Jenga.Config
   , ModulesDirPath (..)
   , JengaSubmodule (..)
   , readJengaConfig
+  , readJengaConfigFrom
   , mergeGitSubmodules
   , parseJengaConfig
   , renderJengaConfig
@@ -18,6 +19,7 @@ import qualified Data.Aeson.Encode.Pretty as Aeson
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.List as List
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import           Data.YAML (FromYAML(..), Node (..), Parser, Scalar (..), (.:))
@@ -115,8 +117,13 @@ renderJengaConfig cfg =
   LBS.toStrict $ LBS.append (Aeson.encodePretty cfg) "\n"  -- Yaml.encode
 
 readJengaConfig :: EitherT JengaError IO JengaConfig
-readJengaConfig = do
-  bs <- handleIOEitherT handler $ BS.readFile configFilePath
+readJengaConfig =
+  readJengaConfigFrom configFilePath
+
+-- Mainly for debugging.
+readJengaConfigFrom :: FilePath -> EitherT JengaError IO JengaConfig
+readJengaConfigFrom path = do
+  bs <- handleIOEitherT handler $ BS.readFile path
   hoistEither $ parseJengaConfig bs
   where
     handler err
@@ -136,13 +143,22 @@ configFilePath :: FilePath
 configFilePath = ".jenga"
 
 
-mergeGitSubmodules :: JengaConfig -> [StackGitRepo] -> JengaConfig
+mergeGitSubmodules :: JengaConfig -> [StackGitRepo] -> (JengaConfig, [JengaSubmodule])
 mergeGitSubmodules jc sgrs =
-  jc { jcSubmodules = map convert sgrs }
+  (newConfig, deleteSubmodules)
   where
+    newConfig :: JengaConfig
+    newConfig = jc { jcSubmodules = newSubmodules }
+
     convert :: StackGitRepo -> JengaSubmodule
     convert sgr =
       JengaSubmodule
         (sgrUrl sgr)
         (unModulesDirPath (jcModulesDirPath jc) </> Text.unpack (sgrName sgr))
         (sgrCommit sgr)
+
+    oldSubmodules, newSubmodules, deleteSubmodules :: [JengaSubmodule]
+    oldSubmodules = jcSubmodules jc
+    newSubmodules = map convert sgrs
+    deleteSubmodules =
+      filter (\ osm -> jsmPath osm `List.notElem` map jsmPath newSubmodules) oldSubmodules

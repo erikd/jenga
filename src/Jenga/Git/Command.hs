@@ -4,6 +4,7 @@ module Jenga.Git.Command
   ( gitAddSubmodule
   , gitCheckoutCommit
   , gitHeadHash
+  , gitRemove
   , gitUpdate
   ) where
 
@@ -31,6 +32,12 @@ gitUpdate dir = do
 gitHeadHash :: FilePath -> EitherT JengaError IO Text
 gitHeadHash dir =
   gitOut ["-C", dir, "rev-parse", "HEAD"]
+
+gitRemove :: FilePath -> EitherT JengaError IO ()
+gitRemove path =
+  gitHush ["rm", path]
+
+-- -----------------------------------------------------------------------------
 
 gitHush :: [Argument] -> EitherT JengaError IO ()
 gitHush args = do
