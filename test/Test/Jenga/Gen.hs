@@ -6,7 +6,7 @@ module Test.Jenga.Gen
 
 import qualified Data.List as DL
 import           Data.Text (Text)
-import qualified Data.Text as T
+import qualified Data.Text as Text
 
 import           Hedgehog (Gen)
 import qualified Hedgehog.Gen as Gen
@@ -37,7 +37,7 @@ genStackConfig =
 
 genResolver :: Gen Text
 genResolver =
-  T.pack . DL.take 4 . show . (`div` 100) <$> Gen.int (Range.linear 100 9999)
+  Text.pack . DL.take 4 . show . (`div` 100) <$> Gen.int (Range.linear 100 9999)
 
 genStackExtraDep :: Gen ConfigExtraDep
 genStackExtraDep =
@@ -48,24 +48,21 @@ genStackExtraDep =
 
 genStackLocalDir :: Gen StackLocalDir
 genStackLocalDir =
-  StackLocalDir . T.pack <$> genFilePath
+  StackLocalDir . Text.pack <$> genFilePath
 
 genStackGitRepo :: Gen StackGitRepo
-genStackGitRepo =
-  StackGitRepo <$> genGitUrl <*> genCommitHash
-
-genGitUrl :: Gen Text
-genGitUrl =
-  T.concat <$> sequence
-    [ Gen.element ["https://github.com/", "git@gitlab.com:", "https://bitbucket.org/"]
-    , Gen.element [ "tom", "dick", "harry", "jean-marc" ]
-    , Gen.element ["a", "xyz", "this-n-that"]
-    ]
+genStackGitRepo = do
+  location <- Gen.element ["https://github.com/", "git@github.com:", "https://bitbucket.org/"]
+  owner <- Gen.element [ "tom", "dick", "harry", "jean-marc" ]
+  repoName <- Gen.element ["a", "xyz", "this-n-that"]
+  ext <- Gen.element [mempty, ".git"]
+  StackGitRepo (Text.concat [location, owner, "/", repoName, ext])
+    <$> genCommitHash <*> pure repoName
 
 
 genCommitHash :: Gen Text
 genCommitHash =
-  T.pack <$> Gen.list (Range.singleton 32) (Gen.element "0123456789abcdef")
+  Text.pack <$> Gen.list (Range.singleton 32) (Gen.element "0123456789abcdef")
 
 genFilePath :: Gen FilePath
 genFilePath =
@@ -77,7 +74,7 @@ genFilePath =
 
 genPackageName :: Gen Text
 genPackageName =
-  T.pack . DL.intercalate "-"
+  Text.pack . DL.intercalate "-"
     <$> Gen.list (Range.linear 1 3) (Gen.list (Range.linear 1 20) Gen.alphaNum)
 
 genPackageVersion :: Gen Version

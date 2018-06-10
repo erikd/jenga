@@ -41,7 +41,6 @@ library
                       , HsYAML                  >= 0.1.1          && < 0.2
                       , http-conduit            == 2.3.*
                       , http-types              >= 0.9            && < 0.13
-                      , network-uri             == 2.6.*
                       , process                 == 1.6.*
                       , text                    == 1.2.*
                       , transformers            >= 0.4            && < 0.7
