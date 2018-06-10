@@ -32,7 +32,7 @@ import           Data.Monoid ((<>))
 
 import           Data.Text (Text)
 import qualified Data.Text as Text
-import           Data.YAML (FromYAML (..), Node (..), Parser, Scalar (..), (.:), (.:?))
+import           Data.YAML (FromYAML (..), Mapping, Node (..), Parser, Scalar (..), (.:), (.:?))
 import qualified Data.YAML as Yaml
 
 import           Jenga.Types
@@ -121,7 +121,7 @@ data StackExtraDep
 
 instance FromYAML ConfigExtraDep where
   parseYAML (Scalar (SStr s)) = ConfigExtraDep <$> parseStackExtraDep s
-  parseYAML (Mapping _ o)     = ConfigExtraDepRepo <$> (StackGitRepo <$> o .: "git" <*> o .: "commit")
+  parseYAML (Mapping _ o)     = ConfigExtraDepRepo <$> mkStackGitRepo o
 
   parseYAML invalid = Yaml.typeMismatch "StackExtraDep" invalid
 
@@ -146,13 +146,24 @@ instance ToJSON ConfigExtraDep where
 data StackGitRepo = StackGitRepo
   { sgrUrl :: !Text
   , sgrCommit :: !Text
+  , sgrName :: !Text
   } deriving (Eq, Show)
 
 instance FromYAML StackGitRepo where
-  parseYAML = Yaml.withMap "StackGitRep" $ \o ->
-    StackGitRepo
-        <$> o .: "git"
-        <*> o .: "commit"
+  parseYAML =
+    Yaml.withMap "StackGitRep" $ \o -> mkStackGitRepo o
+
+mkStackGitRepo :: Mapping -> Parser StackGitRepo
+mkStackGitRepo node = do
+  url <- node .: "git"
+  StackGitRepo url <$> node .: "commit" <*> pure (repoName url)
+  where
+    repoName repo =
+      let mname = List.last $ Text.splitOn "/" repo
+          len = Text.length mname in
+      if ".git" `Text.isSuffixOf` mname
+        then Text.take (len - 4) mname
+        else mname
 
 instance ToJSON StackGitRepo where
   toJSON sgr =
@@ -170,8 +181,8 @@ parseMaybeStackGitRepo v =
     Mapping _ o ->
       (o .: "location") >>= \ p ->
         case p of
-          Mapping _ q -> Just <$> (StackGitRepo <$> q .: "git" <*> q .: "commit")
-          _             -> pure Nothing
+          Mapping _ q -> Just <$> mkStackGitRepo q
+          _           -> pure Nothing
     _ -> pure Nothing
 
 
