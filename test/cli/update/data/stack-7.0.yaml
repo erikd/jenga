@@ -9,3 +9,7 @@ packages:
      git: https://github.com/erikd/wide-word
      commit: 354f9decd7019c026080820d2b120bf1b7c5f296
    extra-dep: true
+ - location:
+     git: https://github.com/haskell/stm
+     commit: 18b5193660318df7617a6a99866b96b706fc2a86
+   extra-dep: true

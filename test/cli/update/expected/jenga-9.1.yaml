@@ -1,0 +1,12 @@
+{
+    "submodule-dir": "lib",
+    "mafia-lock": true,
+    "submodules": [
+        {
+            "hash": "8c3bd977856a0055abba8c78ad702bbe9a124154",
+            "path": "lib/wide-word",
+            "url": "https://github.com/erikd/wide-word"
+        }
+    ],
+    "drop-deps": []
+}
