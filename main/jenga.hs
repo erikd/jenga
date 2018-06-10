@@ -8,12 +8,12 @@ import           Control.Monad.Trans.Either.Exit (orDie)
 
 import qualified Data.ByteString.Char8 as BS
 import           Data.Either (partitionEithers)
-import qualified Data.List as DL
+import qualified Data.List as List
 import           Data.Maybe (fromMaybe)
 import           Data.Monoid ((<>))
 import           Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import qualified Data.Text as Text
+import qualified Data.Text.IO as Text
 
 import           Jenga
 
@@ -74,7 +74,7 @@ pCommand = O.subparser $ mconcat
 
 jengaConfigP :: Parser JengaConfig
 jengaConfigP =
-  JengaConfig <$> subModulesDirP <*> lockFormatP <*> dropDepsP
+  JengaConfig <$> subModulesDirP <*> lockFormatP <*> dropDepsP <*> pure []
 
 subModulesDirP :: Parser ModulesDirPath
 subModulesDirP =
@@ -87,7 +87,7 @@ subModulesDirP =
 
 dropDepsP :: Parser [Text]
 dropDepsP =
-  fmap (maybe [] (T.split (== ',') . T.pack)) <$> O.optional $ strOption
+  fmap (maybe [] (Text.split (== ',') . Text.pack)) <$> O.optional $ strOption
   (  short 'd'
   <> long "drop-deps"
   <> metavar "DROP_DEPENDENCIES"
@@ -127,11 +127,11 @@ initialize jcfg = do
   case ejcfg of
     Left JengaConfigMissing -> do
       runSetup scfg jcfg
-      writeJengaConfig jcfg
+      writeJengaConfig (mergeGitSubmodules jcfg $ stackGitRepos scfg)
     Left err ->
       left err
     Right _ -> do
-      liftIO $ T.putStrLn "Found existing Jenga config file and using that."
+      liftIO $ Text.putStrLn "Found existing Jenga config file and using that."
       runSetup scfg jcfg
 
 update :: EitherT JengaError IO ()
@@ -141,15 +141,15 @@ update = do
   runSetup scfg jcfg
 
 runSetup :: StackConfig -> JengaConfig -> EitherT JengaError IO ()
-runSetup stackCfg (JengaConfig modsDir lockFormat dropDeps) = do
+runSetup stackCfg (JengaConfig modsDir lockFormat dropDeps _) = do
   checkModulesDirPath modsDir
   cfiles <- findProjectCabalFiles (StackFilePath "stack.yaml") modsDir
   setupGitSubmodules modsDir $ stackGitRepos stackCfg
-  deps <- DL.nub . fmap dependencyName <$> concatMapM readPackageDependencies cfiles
+  deps <- List.nub . fmap dependencyName <$> concatMapM readPackageDependencies cfiles
   plist <- getStackageResolverPkgList stackCfg
   subMods <- findSubmodules
   let pkgs = mergePackages (processPackageList deps plist) (stackExtraDeps stackCfg) subMods dropDeps
-  liftIO . T.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
+  liftIO . Text.hPutStrLn stderr $ "GHC version: " <> ghcVersion plist
   forM_ cfiles $ \ cabalpath -> do
     writeLockFile (toLockPath lockFormat cabalpath $ ghcVersion plist) pkgs
 
@@ -162,7 +162,7 @@ dumpStackToJSON stackFile = do
 
 checkModulesDirPath :: ModulesDirPath -> EitherT JengaError IO ()
 checkModulesDirPath (ModulesDirPath modsDir) = do
-  noFiles <- DL.null <$> liftIO (listFiles modsDir)
+  noFiles <- List.null <$> liftIO (listFiles modsDir)
   unless noFiles $
     left $ JengaSubmodFules modsDir
 
@@ -170,7 +170,7 @@ findProjectCabalFiles :: StackFilePath -> ModulesDirPath -> EitherT JengaError I
 findProjectCabalFiles (StackFilePath stackFile) (ModulesDirPath modsDir) =
   fmap CabalFilePath . filter predicate <$> listDirectoryRecursive (takeDirectory stackFile)
   where
-    predicate f = isCabalFile f && not (("." </> modsDir) `DL.isPrefixOf` f)
+    predicate f = isCabalFile f && not (("." </> modsDir) `List.isPrefixOf` f)
 
 -- -----------------------------------------------------------------------------
 

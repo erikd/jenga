@@ -13,7 +13,7 @@ import           Test.Jenga.Gen
 
 prop_round_trip :: Property
 prop_round_trip =
-  H.property $ do
+  H.withTests 500 . H.property $ do
     cfg <- H.forAll genStackConfig
     H.tripping cfg renderStackConfig parseStackConfig
 

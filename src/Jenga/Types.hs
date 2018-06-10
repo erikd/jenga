@@ -16,10 +16,10 @@ module Jenga.Types
 
 import           Control.Exception (IOException)
 
-import qualified Data.List as DL
+import qualified Data.List as List
 import           Data.Monoid ((<>))
 import           Data.Text (Text)
-import qualified Data.Text as T
+import qualified Data.Text as Text
 
 import           Distribution.Pretty (prettyShow)
 import           Distribution.Version (Version, mkVersion, versionNumbers)
@@ -38,10 +38,10 @@ data Package = Package
 
 readVersion :: Text -> Version
 readVersion =
-  mkVersion . DL.map (read . T.unpack) . T.split (== '.')
+  mkVersion . List.map (read . Text.unpack) . Text.split (== '.')
 
 renderVersion :: Version -> Text
-renderVersion = T.pack . prettyShow
+renderVersion = Text.pack . prettyShow
 
 data JengaError
   = JengaConfigMissing
@@ -72,24 +72,24 @@ renderJengaError je =
     JengaStackError t ->
       "Error parsing 'stack.yaml': " <> t
     JengaIOError f fp ioe ->
-      f <> ": Error accessing '" <> T.pack fp <> "': " <> renderIOException ioe
+      f <> ": Error accessing '" <> Text.pack fp <> "': " <> renderIOException ioe
     JengaGitDirMissing ->
       "Unable to find '.git' directory."
     JengaParseUrl u ->
       "Not able to parse URL: " <> u
     JengaHttpStatus f s ->
-      f <> " received HTTP response: " <> T.pack s
+      f <> " received HTTP response: " <> Text.pack s
     JengaHttpException s ->
-      "HTTP exception: " <> T.pack s
+      "HTTP exception: " <> Text.pack s
     JengaJsonError s ->
-      "Error reading stackage JSON response: " <> T.pack s
+      "Error reading stackage JSON response: " <> Text.pack s
     JengaHttpIOError ioe ->
       "IOError during HTTP request: " <> renderIOException ioe
     JengaSubmodFules modsDir ->
-      "Found files in submodules directory '" <> T.pack modsDir <> "' which should only have other directories."
+      "Found files in submodules directory '" <> Text.pack modsDir <> "' which should only have other directories."
     JengaGitError msg ->
       msg
 
 renderIOException :: IOException -> Text
 renderIOException =
-  T.pack . show
+  Text.pack . show
