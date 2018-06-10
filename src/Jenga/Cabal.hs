@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Jenga.Cabal
   ( CabalFilePath (..)
@@ -23,12 +22,7 @@ import           Distribution.PackageDescription
                     ( Benchmark, CondTree (..), ConfVar, Executable, GenericPackageDescription (..)
                     , PackageDescription (..), Library, TestSuite
                     )
-#if MIN_VERSION_Cabal (2,0,0)
-import           Distribution.PackageDescription.Parse (readGenericPackageDescription)
-#else
-import           Distribution.PackageDescription.Parse (readPackageDescription)
-import           Distribution.Verbosity (Verbosity)
-#endif
+import           Distribution.PackageDescription.Parsec (readGenericPackageDescription)
 import           Distribution.Verbosity (normal)
 
 import           Jenga.Types
@@ -87,9 +81,3 @@ extractTestSuiteDeps = concatMap (condTreeConstraints . snd)
 
 extractBenchmarkDeps :: [(a, CondTree ConfVar [Dependency] Benchmark)] -> [Dependency]
 extractBenchmarkDeps = concatMap (condTreeConstraints . snd)
-
-#if MIN_VERSION_Cabal (2,0,0)
-#else
-readGenericPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
-readGenericPackageDescription = readPackageDescription
-#endif

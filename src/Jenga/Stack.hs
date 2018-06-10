@@ -136,7 +136,7 @@ parseStackExtraDep str = do
 
 instance ToJSON ConfigExtraDep where
   toJSON (ConfigExtraDep (StackExtraDep name version)) =
-    Aeson.String $ name <> "-" <> Text.pack (showVersion version)
+    Aeson.String $ Text.concat [name, "-", renderVersion version]
   toJSON (ConfigExtraDepRepo sgr) =
     Aeson.object
       [ "git" .= sgrUrl sgr

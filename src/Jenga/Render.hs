@@ -61,10 +61,6 @@ writeMafiaLock mpath pkgs =
 renderPackage :: Package -> [Text]
 renderPackage pkg =
   [ packageName pkg, " == ", renderVersion (packageVersion pkg) ]
-  where
-    renderVersion =
-      Text.pack . List.intercalate "." . List.map show . versionNumbers
-
 
 toMafiaLockPath :: CabalFilePath -> Text -> LockFilePath
 toMafiaLockPath (CabalFilePath fp) ghcVer =
