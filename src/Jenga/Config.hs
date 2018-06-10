@@ -2,13 +2,14 @@
 module Jenga.Config
   ( JengaConfig (..)
   , ModulesDirPath (..)
+  , JengaSubmodule (..)
   , readJengaConfig
+  , mergeGitSubmodules
   , parseJengaConfig
   , renderJengaConfig
   , writeJengaConfig
   ) where
 
-import           Control.Monad.Extra (mapMaybeM)
 import           Control.Monad.Trans.Either (EitherT, handleIOEitherT, hoistEither)
 
 import           Data.Aeson (ToJSON (..), (.=))
@@ -22,8 +23,10 @@ import qualified Data.Text as Text
 import           Data.YAML (FromYAML(..), Node (..), Parser, Scalar (..), (.:))
 import qualified Data.YAML as Yaml
 
+import           Jenga.Stack
 import           Jenga.Types
 
+import           System.FilePath ((</>))
 import           System.IO.Error (isDoesNotExistError)
 
 
@@ -35,6 +38,14 @@ data JengaConfig = JengaConfig
   { jcModulesDirPath :: !ModulesDirPath
   , jcMafiaLock :: !LockFormat
   , jcDropDeps :: ![Text]
+  , jcSubmodules :: ![JengaSubmodule]
+  }
+  deriving (Eq, Show)
+
+data JengaSubmodule = JengaSubmodule
+  { jsmUrl :: !Text
+  , jsmPath :: !FilePath
+  , jsmHash :: Text
   }
   deriving (Eq, Show)
 
@@ -44,6 +55,7 @@ instance FromYAML JengaConfig where
       <$> o .: "submodule-dir"
       <*> ((o .: "mafia-lock") >>= toLockFormat)
       <*> ((o .: "drop-deps") >>= parseDropDeps)
+      <*> ((o .: "submodules") >>= parseSubmodules)
 
 instance FromYAML ModulesDirPath where
   parseYAML = Yaml.withStr "ModulesDirPath" (pure . ModulesDirPath . Text.unpack)
@@ -58,16 +70,37 @@ instance ToJSON JengaConfig where
       [ "submodule-dir" .= unModulesDirPath (jcModulesDirPath cfg)
       , "mafia-lock" .= (jcMafiaLock cfg == MafiaLock)
       , "drop-deps" .= jcDropDeps cfg
+      , "submodules" .= jcSubmodules cfg
+      ]
+
+instance ToJSON JengaSubmodule where
+  toJSON jsm =
+    Aeson.object
+      [ "url" .= jsmUrl jsm
+      , "path" .= Text.pack (jsmPath jsm)
+      , "hash" .= jsmHash jsm
       ]
 
 parseDropDeps :: Node -> Parser [Text]
 parseDropDeps =
-    Yaml.withSeq "parseDropDeps" $ \a ->
-      mapMaybeM parseMaybe a
+  Yaml.withSeq "parseDropDeps" $ \a ->
+    mapM parseDropDep a
   where
-    parseMaybe :: Node -> Parser (Maybe Text)
-    parseMaybe (Scalar (SStr s)) = pure $ Just s
-    parseMaybe _                 = pure Nothing
+    parseDropDep :: Node -> Parser Text
+    parseDropDep (Scalar (SStr s)) = pure s
+    parseDropDep invalid           = Yaml.typeMismatch "parseDropDep" invalid
+
+parseSubmodules :: Node -> Parser [JengaSubmodule]
+parseSubmodules =
+  Yaml.withSeq "parseSubmodules" $ \a ->
+    mapM parseSubMod a
+  where
+    parseSubMod =
+     Yaml.withMap "JengaSubmodule" $ \o ->
+        JengaSubmodule
+          <$> o .: "url"
+          <*> fmap Text.unpack (o .: "path")
+          <*> o .: "hash"
 
 parseJengaConfig :: ByteString -> Either JengaError JengaConfig
 parseJengaConfig bs =
@@ -101,3 +134,15 @@ writeJengaConfig cfg =
 
 configFilePath :: FilePath
 configFilePath = ".jenga"
+
+
+mergeGitSubmodules :: JengaConfig -> [StackGitRepo] -> JengaConfig
+mergeGitSubmodules jc sgrs =
+  jc { jcSubmodules = map convert sgrs }
+  where
+    convert :: StackGitRepo -> JengaSubmodule
+    convert sgr =
+      JengaSubmodule
+        (sgrUrl sgr)
+        (unModulesDirPath (jcModulesDirPath jc) </> Text.unpack (sgrName sgr))
+        (sgrCommit sgr)

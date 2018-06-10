@@ -22,9 +22,17 @@ genJengaConfig =
     <$> localPath
     <*> Gen.element [ MafiaLock, CabalFreeze ]
     <*> Gen.list (Range.linear 0 5) genPackageName
+    <*> Gen.list (Range.linear 0 5) genJengaSubmodule
   where
     localPath =
-      ModulesDirPath . joinPath <$> Gen.list (Range.linear 1 5) genFilePath
+      ModulesDirPath . joinPath <$> Gen.list (Range.linear 1 5) pathName
+
+    pathName =
+      Gen.list (Range.linear 1 10) $
+        Gen.frequency
+          [ (5, Gen.alphaNum)
+          , (1, Gen.element ".-+@$%^& ")
+          ]
 
 genStackConfig :: Gen StackConfig
 genStackConfig =
@@ -52,13 +60,21 @@ genStackLocalDir =
 
 genStackGitRepo :: Gen StackGitRepo
 genStackGitRepo = do
-  location <- Gen.element ["https://github.com/", "git@github.com:", "https://bitbucket.org/"]
-  owner <- Gen.element [ "tom", "dick", "harry", "jean-marc" ]
-  repoName <- Gen.element ["a", "xyz", "this-n-that"]
-  ext <- Gen.element [mempty, ".git"]
+  (location, owner, repoName, ext) <- getGitRepoUrlParts
   StackGitRepo (Text.concat [location, owner, "/", repoName, ext])
     <$> genCommitHash <*> pure repoName
 
+getGitRepoUrlParts :: Gen (Text, Text, Text, Text)
+getGitRepoUrlParts =
+  (,,,) <$> Gen.element ["https://github.com/", "git@github.com:", "https://bitbucket.org/"]
+        <*> Gen.element [ "tom", "dick", "harry", "jean-marc" ]
+        <*> Gen.element ["a", "xyz", "this-n-that"]
+        <*> Gen.element [mempty, ".git"]
+
+genGitUrl :: Gen Text
+genGitUrl = do
+  (location, owner, repoName, ext) <- getGitRepoUrlParts
+  pure $ Text.concat [location, owner, "/", repoName, ext]
 
 genCommitHash :: Gen Text
 genCommitHash =
@@ -80,3 +96,10 @@ genPackageName =
 genPackageVersion :: Gen Version
 genPackageVersion =
   mkVersion <$> Gen.list (Range.linear 1 4) (Gen.int $ Range.linear 1 20)
+
+genJengaSubmodule :: Gen JengaSubmodule
+genJengaSubmodule =
+  JengaSubmodule
+    <$> genGitUrl
+    <*> genFilePath
+    <*> genCommitHash
