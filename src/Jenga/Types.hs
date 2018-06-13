@@ -47,7 +47,7 @@ data JengaError
   = JengaConfigMissing
   | JengaConfigError !Text
   | JengaStackMissing
-  | JengaStackError !Text
+  | JengaStackError !FilePath !Text
   | JengaIOError !Text !FilePath !IOException
   | JengaGitDirMissing
   | JengaParseUrl !Text
@@ -69,8 +69,8 @@ renderJengaError je =
       "Error parsing '.jenga' file: " <> t
     JengaStackMissing ->
       "Missing 'stack.yaml' file."
-    JengaStackError t ->
-      "Error parsing 'stack.yaml': " <> t
+    JengaStackError fp t ->
+      Text.concat [ "Error parsing '", Text.pack fp, "': ", t ]
     JengaIOError f fp ioe ->
       f <> ": Error accessing '" <> Text.pack fp <> "': " <> renderIOException ioe
     JengaGitDirMissing ->
