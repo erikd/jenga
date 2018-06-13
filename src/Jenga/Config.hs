@@ -128,7 +128,7 @@ readJengaConfigFrom path = do
   where
     handler err
       | isDoesNotExistError err = JengaConfigMissing
-      | otherwise = JengaStackError $ Text.pack (show err)
+      | otherwise = JengaConfigError $ Text.pack (show err)
 
 
 writeJengaConfig :: JengaConfig -> EitherT JengaError IO ()

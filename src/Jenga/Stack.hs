@@ -24,6 +24,7 @@ import           Data.Aeson (ToJSON (..), Value (..), (.=))
 import qualified Data.Aeson as Aeson
 import           Data.Aeson.Encode.Pretty (encodePretty', defConfig)
 
+import           Data.Bifunctor (first)
 import           Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
@@ -206,19 +207,22 @@ parseStackConfig :: ByteString -> Either JengaError StackConfig
 parseStackConfig bs =
   case Yaml.decodeStrict bs of
     Right [cfg] -> Right cfg
-    Right []    -> Left $ JengaStackError "empty stack configuration file"
-    Right (_:_:_) -> Left $ JengaStackError "Multiple documents encountered in stack configuration file"
-    Left s      -> Left $ JengaStackError (Text.pack s)
+    Right []    -> Left $ JengaStackError "?" "empty stack configuration file"
+    Right (_:_:_) -> Left $ JengaStackError "?" "Multiple documents encountered in stack configuration file"
+    Left s      -> Left $ JengaStackError "?" $ Text.pack s
 
 readStackConfig :: StackFilePath -> EitherT JengaError IO StackConfig
 readStackConfig (StackFilePath stackYamlFile) = do
   bs <- handleIOEitherT handler $ BS.readFile stackYamlFile
-  hoistEither $ parseStackConfig bs
+  hoistEither $ first correctFilePath (parseStackConfig bs)
   where
     handler err
       | isDoesNotExistError err = JengaStackMissing
-      | otherwise = JengaStackError $ Text.pack (show err)
-
+      | otherwise = JengaStackError "?" $ Text.pack (show err)
+    correctFilePath se =
+      case se of
+        JengaStackError _ e -> JengaStackError stackYamlFile e
+        other -> other
 
 renderStackConfig :: StackConfig -> ByteString
 renderStackConfig =
