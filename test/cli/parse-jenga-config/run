@@ -2,9 +2,9 @@
 
 . $(dirname $0)/../core/runner
 
-PARSER="${JENGA} parse-stack --stack-file"
+PARSER="${JENGA} parse-jenga --jenga-file"
 
-testname="parse-stack-config"
+testname="parse-jenga-config"
 
 banner "${testname}"
 #----------

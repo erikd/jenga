@@ -1,0 +1,3 @@
+submodule-dir: submods
+mafia-lock: true
+drop-deps: [ directory ]

@@ -1,0 +1,9 @@
+{
+    "submodule-dir": "submods",
+    "mafia-lock": true,
+    "submodules": [],
+    "drop-deps": [
+        "directory"
+    ]
+}
+
