@@ -9,6 +9,7 @@ import           Data.Text (Text)
 import qualified Data.Text as Text
 
 import           Hedgehog (Gen)
+import qualified Hedgehog.Corpus as Corpus
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
@@ -51,8 +52,11 @@ genStackExtraDep :: Gen ConfigExtraDep
 genStackExtraDep =
   Gen.choice
     [ ConfigExtraDep <$> (StackExtraDep <$> genPackageName <*> genPackageVersion)
-    , ConfigExtraDepRepo <$> genStackGitRepo
+    , ConfigExtraDepRepo <$> fmap simplify genStackGitRepo
     ]
+  where
+    -- Git repos listed as an "extra-dep" cannot specify "subdirs" or "extra-dep"
+    simplify (StackGitRepo u n c _ _) = StackGitRepo u n c [] True
 
 genStackLocalDir :: Gen StackLocalDir
 genStackLocalDir =
@@ -61,13 +65,15 @@ genStackLocalDir =
 genStackGitRepo :: Gen StackGitRepo
 genStackGitRepo = do
   (location, owner, repoName, ext) <- getGitRepoUrlParts
-  StackGitRepo (Text.concat [location, owner, "/", repoName, ext])
-    <$> genCommitHash <*> pure repoName
+  StackGitRepo (Text.concat [location, owner, "/", repoName, ext]) repoName
+    <$> genCommitHash
+    <*> Gen.list (Range.linear 0 5) (Gen.element Corpus.southpark)
+    <*> Gen.bool
 
 getGitRepoUrlParts :: Gen (Text, Text, Text, Text)
 getGitRepoUrlParts =
   (,,,) <$> Gen.element ["https://github.com/", "git@github.com:", "https://bitbucket.org/"]
-        <*> Gen.element [ "tom", "dick", "harry", "jean-marc" ]
+        <*> Gen.element Corpus.simpsons
         <*> Gen.element ["a", "xyz", "this-n-that"]
         <*> Gen.element [mempty, ".git"]
 

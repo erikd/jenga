@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Jenga.Stack
   ( ConfigExtraDep (..)
@@ -29,6 +30,7 @@ import           Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.List as List
+import           Data.Maybe (fromMaybe)
 import           Data.Monoid ((<>))
 
 import           Data.Text (Text)
@@ -122,7 +124,7 @@ data StackExtraDep
 
 instance FromYAML ConfigExtraDep where
   parseYAML (Scalar (SStr s)) = ConfigExtraDep <$> parseStackExtraDep s
-  parseYAML (Mapping _ o)     = ConfigExtraDepRepo <$> mkStackGitRepo o
+  parseYAML (Mapping _ o)     = ConfigExtraDepRepo <$> mkStackGitRepo True [] o
 
   parseYAML invalid = Yaml.typeMismatch "StackExtraDep" invalid
 
@@ -146,18 +148,19 @@ instance ToJSON ConfigExtraDep where
 
 data StackGitRepo = StackGitRepo
   { sgrUrl :: !Text
-  , sgrCommit :: !Text
   , sgrName :: !Text
+  , sgrCommit :: !Text
+  -- Following two fields can only be present when a git repo is provided
+  -- as a "location" rather than an "extra-dep".
+  , sgrSubDirs :: ![Text]
+  , sgrExtraDep :: !Bool
   } deriving (Eq, Show)
 
-instance FromYAML StackGitRepo where
-  parseYAML =
-    Yaml.withMap "StackGitRep" $ \o -> mkStackGitRepo o
 
-mkStackGitRepo :: Mapping -> Parser StackGitRepo
-mkStackGitRepo node = do
+mkStackGitRepo :: Bool -> [Text] -> Mapping -> Parser StackGitRepo
+mkStackGitRepo extraDep subdirs node = do
   url <- node .: "git"
-  StackGitRepo url <$> node .: "commit" <*> pure (repoName url)
+  StackGitRepo url (repoName url) <$> node .: "commit" <*> pure subdirs <*> pure extraDep
   where
     repoName repo =
       let mname = List.last $ Text.splitOn "/" repo
@@ -174,16 +177,20 @@ instance ToJSON StackGitRepo where
             [ "git" .= sgrUrl sgr
             , "commit" .= sgrCommit sgr
             ]
+      , "subdirs" .= sgrSubDirs sgr
+      , "extra-dep" .= sgrExtraDep sgr
       ]
 
 parseMaybeStackGitRepo :: Node -> Parser (Maybe StackGitRepo)
 parseMaybeStackGitRepo v =
   case v of
     Mapping _ o ->
-      (o .: "location") >>= \ p ->
-        case p of
-          Mapping _ q -> Just <$> mkStackGitRepo q
-          _           -> pure Nothing
+      (o .: "location") >>= \case
+        Mapping _ q -> do
+          ed <- o .: "extra-dep"
+          sd <- fromMaybe [] <$> o .:? "subdirs"
+          Just <$> mkStackGitRepo ed sd q
+        _           -> pure Nothing
     _ -> pure Nothing
 
 

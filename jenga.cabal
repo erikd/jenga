@@ -100,6 +100,7 @@ test-suite test
   build-depends:        base
                       , filepath
                       , hedgehog                == 0.6.*
+                      , hedgehog-corpus         == 0.1.*
                       , jenga
                       , text
 
