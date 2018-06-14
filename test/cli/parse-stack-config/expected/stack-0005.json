@@ -1,7 +1,6 @@
 {
     "packages": [
-        "first",
-        "second",
+        ".",
         {
             "location": {
                 "git": "https://github.com/well-typed/cborg",
@@ -14,16 +13,17 @@
         },
         {
             "location": {
-                "git": "https://github.com/thoughtpolice/hs-ed25519",
-                "commit": "da4247b5b3420120e20451e6a252e2a2ca15b43c"
+                "git": "https://github.com/input-output-hk/engine.io.git",
+                "commit": "d3c55f51bb81cee7d0d551de930ce65fe7d76756"
             },
-            "subdirs": [],
+            "subdirs": [
+                "socket-io",
+                "engine-io",
+                "engine-io-wai"
+            ],
             "extra-dep": true
         }
     ],
-    "extra-deps": [
-        "transformers-0.5.5.0",
-        "concurrent-extra-0.7.0.10"
-    ],
-    "resolver": "lts-9.1"
+    "extra-deps": [],
+    "resolver": "lts-11.13"
 }
