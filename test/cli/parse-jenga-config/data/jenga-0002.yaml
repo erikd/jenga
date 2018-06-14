@@ -1,0 +1,3 @@
+submodule-dir: lib
+mafia-lock: false
+drop-deps: [  ]

@@ -43,7 +43,8 @@ main =
 data Command
   = Initialize JengaConfig
   | Update
-  | Parse StackFilePath
+  | ParseStack StackFilePath
+  | ParseJenga FilePath
 
 
 pCommand :: Parser Command
@@ -62,10 +63,14 @@ pCommand = O.subparser $ mconcat
       <> "or other things) and want to build is the new updated project. This sub command"
       <> "expects a '.jenga' file in the same directory as the 'stack.yaml' file.")
       (pure Update)
-  , subCommand "parse"
-      ( "Parse the 'stack.yaml' file and dump out the relevant bits as JSON. This is "
+  , subCommand "parse-stack"
+      ( "Parse a 'stack.yaml' file and dump out the relevant bits as JSON. This is "
       <> "mostly useful for testing and debugging.")
-      (Parse <$> stackFilePathP)
+      (ParseStack <$> stackFilePathP)
+  , subCommand "parse-jenga"
+      ( "Parse the '.jenga' file and dump out the relevant bits as JSON. This is "
+      <> "mostly useful for testing and debugging.")
+      (ParseJenga <$> jengaFilePathP)
   ]
   where
     subCommand :: String -> Doc -> Parser a -> Mod CommandFields a
@@ -110,6 +115,15 @@ stackFilePathP =
   <> help "The 'stack.yaml' file. (defaults to './stack.yaml')."
   )
 
+jengaFilePathP :: Parser FilePath
+jengaFilePathP =
+  fmap (fromMaybe ".jenga") <$> O.optional $ strOption
+  (  short 'j'
+  <> long "jenga-file"
+  <> metavar "JENGA_FILE"
+  <> help "The '.jenga' file. (defaults to './.jenga')."
+  )
+
 -- -----------------------------------------------------------------------------
 
 commandHandler :: Command -> IO ()
@@ -118,7 +132,8 @@ commandHandler cmd =
     case cmd of
       Initialize cfg -> initialize cfg
       Update -> update
-      Parse scfg -> dumpStackToJSON scfg
+      ParseStack scfg -> dumpStackToJSON scfg
+      ParseJenga jcfg -> dumpJengaToJSON jcfg
 
 initialize :: JengaConfig -> EitherT JengaError IO ()
 initialize jcfg = do
@@ -164,6 +179,11 @@ dumpStackToJSON :: StackFilePath -> EitherT JengaError IO ()
 dumpStackToJSON stackFile = do
   scfg <- readStackConfig stackFile
   liftIO . BS.putStrLn $ renderStackConfig scfg
+
+dumpJengaToJSON :: FilePath -> EitherT JengaError IO ()
+dumpJengaToJSON file = do
+  jcfg <- readJengaConfigFrom file
+  liftIO . BS.putStrLn $ renderJengaConfig jcfg
 
 -- -----------------------------------------------------------------------------
 

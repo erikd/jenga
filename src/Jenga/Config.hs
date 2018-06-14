@@ -22,7 +22,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.List as List
 import           Data.Text (Text)
 import qualified Data.Text as Text
-import           Data.YAML (FromYAML(..), Node (..), Parser, Scalar (..), (.:))
+import           Data.YAML (FromYAML(..), Node (..), Parser, Scalar (..), (.:), (.:?))
 import qualified Data.YAML as Yaml
 
 import           Jenga.Stack
@@ -57,7 +57,7 @@ instance FromYAML JengaConfig where
       <$> o .: "submodule-dir"
       <*> ((o .: "mafia-lock") >>= toLockFormat)
       <*> ((o .: "drop-deps") >>= parseDropDeps)
-      <*> ((o .: "submodules") >>= parseSubmodules)
+      <*> (maybe (pure []) parseSubmodules =<< (o .:? "submodules"))
 
 instance FromYAML ModulesDirPath where
   parseYAML = Yaml.withStr "ModulesDirPath" (pure . ModulesDirPath . Text.unpack)
@@ -120,7 +120,7 @@ readJengaConfig :: EitherT JengaError IO JengaConfig
 readJengaConfig =
   readJengaConfigFrom configFilePath
 
--- Mainly for debugging.
+-- Mainly for debugging and testing.
 readJengaConfigFrom :: FilePath -> EitherT JengaError IO JengaConfig
 readJengaConfigFrom path = do
   bs <- handleIOEitherT handler $ BS.readFile path
