@@ -1,0 +1,23 @@
+resolver: lts-11.13
+flags: {}
+extra-deps: []
+extra-package-dbs: []
+
+packages:
+  - '.'
+
+  - location:
+      git: https://github.com/well-typed/cborg
+      commit: c7db82bfd93923f5b08ed51a4cd53e30bd445924
+    subdirs:
+    - cborg
+    extra-dep: true
+
+  - location:
+      git: https://github.com/input-output-hk/engine.io.git
+      commit: d3c55f51bb81cee7d0d551de930ce65fe7d76756
+    extra-dep: true
+    subdirs:
+      - socket-io
+      - engine-io
+      - engine-io-wai
