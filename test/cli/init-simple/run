@@ -15,6 +15,11 @@ mkdir -p ${OUTPUT_DIR}
 
 cp -f ${INPUT_DIR}/* ${OUTPUT_DIR}/
 
+# Add some invalid cabal files to make sure they are ignored.
+mkdir ${OUTPUT_DIR}/dist-newstyle ${OUTPUT_DIR}/.cabal-sandbox/
+echo "Invalid cabal file" > ${OUTPUT_DIR}/dist-newstyle/invalid.cabal
+echo "Invalid cabal file" > ${OUTPUT_DIR}/.cabal-sandbox/invalid.cabal
+
 (cd ${OUTPUT_DIR} && \
   git init && \
   git add stack.yaml ${testname}.cabal && \
