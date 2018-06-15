@@ -193,11 +193,18 @@ checkModulesDirPath (ModulesDirPath modsDir) = do
   unless noFiles $
     left $ JengaSubmodFules modsDir
 
+-- Find cabal files belong to this project, which specifically means
+-- not cabal files in git submodules, or in a cabal sandbox or the
+-- new style sandboxes.
 findProjectCabalFiles :: StackFilePath -> ModulesDirPath -> EitherT JengaError IO [CabalFilePath]
 findProjectCabalFiles (StackFilePath stackFile) (ModulesDirPath modsDir) =
   fmap CabalFilePath . filter predicate <$> listDirectoryRecursive (takeDirectory stackFile)
   where
-    predicate f = isCabalFile f && not (("." </> modsDir) `List.isPrefixOf` f)
+    predicate f =
+      isCabalFile f
+        && not (("." </> modsDir) `List.isPrefixOf` f)
+        && not (".cabal-sandbox/" `List.isInfixOf` f)
+        && not ("dist-newstyle/" `List.isInfixOf` f)
 
 -- -----------------------------------------------------------------------------
 
