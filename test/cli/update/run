@@ -1,5 +1,14 @@
 #!/bin/sh -eu
 
+# Create a repo using a stack.yaml file for lts-7.0.
+# Run `jenga init` to initialize the submodules ('wide-word` and 'stm').
+# Check that the local '.jenga' file is as expected.
+# Check that the mafia lock file is as expected.
+# Update the 'stack.yaml' file to lts-9.1 (dropping the git version of 'stm').
+# Run 'jenga upgrade' and make sure the 'stm' submodule gets removed.
+# Check that the local '.jenga' file has been updated as expected.
+# Check that the mafia lock file is as expected.
+
 . $(dirname $0)/../core/runner
 
 testname="update"

@@ -1,5 +1,7 @@
 #!/bin/sh -eu
 
+# Run 'jenga init' with a couple of explicitly dropped (ignored) dependencies.
+
 . $(dirname $0)/../core/runner
 
 testname="init-drop-deps"

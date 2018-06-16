@@ -1,6 +1,6 @@
 #!/bin/sh -eu
 
-# This test shows that Jenga fails if submodules dir contains any regular files.
+# This test shows that Jenga fails if the submodules dir contains any regular files.
 # It should only contain directories.
 
 . $(dirname $0)/../core/runner

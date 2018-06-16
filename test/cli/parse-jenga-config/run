@@ -1,5 +1,8 @@
 #!/bin/sh -eu
 
+# Parse a number of variants on jenga config file, render the results as JSON and
+# make sure they match the expected outputs.
+
 . $(dirname $0)/../core/runner
 
 PARSER="${JENGA} parse-jenga --jenga-file"

@@ -1,5 +1,12 @@
 #!/bin/sh -eu
 
+# Create a repo using a know stack.yaml file.
+# Run `jenga init` to initialize the submodule ('wide-word`).
+# Check that the local '.jenga' file is as expected.
+# Check that the mafia lock file is as expected.
+# Also make sure that cabal files in the 'dist-newstyle' and '.cabal-sandbox'
+# are ignored.
+
 . $(dirname $0)/../core/runner
 
 testname="init-simple"

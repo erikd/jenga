@@ -1,5 +1,8 @@
 #!/bin/sh -eu
 
+# Run 'jenga init' with a git repo listed in the 'extra-deps' section of
+# the 'stack.yaml' file.
+
 . $(dirname $0)/../core/runner
 
 testname="git-extra-dep"
