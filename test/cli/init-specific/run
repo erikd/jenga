@@ -1,0 +1,47 @@
+#!/bin/sh -eu
+
+# Create a repo using a known stack-specific.yaml file.
+# Run `jenga init` to initialize the submodule ('wide-word`).
+# Check that the local '.jenga' file is as expected.
+# Check that the mafia lock file is as expected.
+# Also make sure that cabal files in the 'dist-newstyle' and '.cabal-sandbox'
+# are ignored.
+
+. $(dirname $0)/../core/runner
+
+testname="init-specific"
+
+banner "${testname}"
+#----------
+
+INPUT_DIR=$(dirname $0)/data
+OUTPUT_DIR=${TEST}
+EXPECTED_DIR=$(dirname $0)/expected
+
+mkdir -p ${OUTPUT_DIR}
+
+cp -f ${INPUT_DIR}/* ${OUTPUT_DIR}/
+
+# Add some invalid cabal files to make sure they are ignored.
+mkdir ${OUTPUT_DIR}/dist-newstyle ${OUTPUT_DIR}/.cabal-sandbox/
+echo "Invalid cabal file" > ${OUTPUT_DIR}/dist-newstyle/invalid.cabal
+echo "Invalid cabal file" > ${OUTPUT_DIR}/.cabal-sandbox/invalid.cabal
+
+(cd ${OUTPUT_DIR} && \
+  git init && \
+  git add stack-specific.yaml ${testname}.cabal && \
+  git commit -m "Initial commit" -- . && \
+  ${JENGA} init --stack-file stack-specific.yaml)
+
+assert_file_exists ${OUTPUT_DIR}/${testname}.lock-8.2.2
+assert_file_exists ${OUTPUT_DIR}/.jenga
+
+error=0
+compare_files ${OUTPUT_DIR}/${testname}.lock-8.2.2 ${EXPECTED_DIR}/${testname}.lock-8.2.2
+compare_files ${OUTPUT_DIR}/.jenga ${EXPECTED_DIR}/jenga.yaml
+
+if test "${error}" = "0"; then
+	pass_test
+else
+	fail_test
+fi
