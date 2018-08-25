@@ -41,7 +41,7 @@ main =
 -- -----------------------------------------------------------------------------
 
 data Command
-  = Initialize JengaConfig
+  = Initialize JengaConfig (Maybe StackFilePath)
   | Update
   | ParseStack StackFilePath
   | ParseJenga FilePath
@@ -55,7 +55,7 @@ pCommand = O.subparser $ mconcat
       <> "  * Find all the cabal files that are not submodules and generate a lock file for each\n"
       <> "This command assumes that it is being run in a Git repo and that that 'stack.yaml' file is in the top level directory of the Git repo."
       <> "This command will also generate a '.jenga' file in the top level directory.")
-      (Initialize <$> jengaConfigP)
+      (Initialize <$> jengaConfigP <*> O.optional stackFilePathP)
 
   , subCommand "update"
       ( "Update a previously initialized a project. A typical use case would be doing a"
@@ -130,14 +130,14 @@ commandHandler :: Command -> IO ()
 commandHandler cmd =
   orDie renderJengaError $
     case cmd of
-      Initialize cfg -> initialize cfg
+      Initialize cfg mscfg -> initialize cfg mscfg
       Update -> update
       ParseStack scfg -> dumpStackToJSON scfg
       ParseJenga jcfg -> dumpJengaToJSON jcfg
 
-initialize :: JengaConfig -> EitherT JengaError IO ()
-initialize jcfg = do
-  scfg <- readStackConfig (StackFilePath "stack.yaml")
+initialize :: JengaConfig -> Maybe StackFilePath -> EitherT JengaError IO ()
+initialize jcfg mscfg = do
+  scfg <- readStackConfig $ fromMaybe (StackFilePath "stack.yaml") mscfg
   ejcfg <- liftIO $ runEitherT readJengaConfig
   case ejcfg of
     Left JengaConfigMissing -> do
